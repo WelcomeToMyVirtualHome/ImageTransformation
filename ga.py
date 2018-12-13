@@ -14,17 +14,21 @@ parser = argparse.ArgumentParser(description='ga')
 parser.add_argument('--input', help='Name of input folder', default='./input')
 parser.add_argument('--output', help='Name of output folder', default='./output')
 args = parser.parse_args()
+
 try:
     os.makedirs(args.output)
 except OSError as e:
     if e.errno != errno.EEXIST:
         raise
 
+for img in glob.glob("{:s}//{:s}".format(args.output,"*.png")):
+    os.remove(img)
+
 image = cv.imread("{:s}//{:s}".format(args.input,"input_resized.png"),cv.IMREAD_UNCHANGED)
 
 extracted = []
-for extra in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
-    extracted.append(cv.imread(extra,cv.IMREAD_UNCHANGED))
+for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
+    extracted.append(cv.imread(img,cv.IMREAD_UNCHANGED))
 
 (H, W) = image.shape[:2]
 
@@ -38,26 +42,27 @@ class Chunk:
         self.pos = pos
     
     def rotate(self):
-        #rotate_bound: img.shape->inf 
-        #TODO square bounding box?
+        #TODO fix
         self.img = imutils.rotate(self.img, self.angle)
 
     def resize(self):
+        # TODO fix
         self.img = cv.resize(self.img,(int(self.img.shape[1]*self.scale[1]),int(self.img.shape[0]*self.scale[0])))
 
     def put(self):
         layer = np.zeros(image.shape, dtype=np.uint8)
         (h, w) = self.img.shape[:2]
-        if self.pos[1] + h > H and self.pos[0] + w > W:
-            layer[self.pos[1]:,self.pos[0]:] = self.img[:H-self.pos[1],:W-self.pos[0]]
+        # TODO fix, enable putting extracted image partially in the image 
+        if self.pos[0] + h >= H and self.pos[1] + w >= W:
+            layer[self.pos[0]:,self.pos[1]:] = self.img[:H-self.pos[0],:W-self.pos[1]]
             return layer
-        elif self.pos[1] + h > H:
-            layer[self.pos[1]:,self.pos[0]:self.pos[0]+w] = self.img[:H-self.pos[1],:]
+        elif self.pos[0] + h >= H:
+            layer[self.pos[0]:,self.pos[1]:self.pos[1]+w] = self.img[:H-self.pos[0],:]
             return layer
-        elif self.pos[0] + w > W:
-            layer[self.pos[1]:self.pos[1]+h,self.pos[0]:] = self.img[:,:W-self.pos[0]]
+        elif self.pos[1] + w >= W:
+            layer[self.pos[0]:self.pos[0]+h,self.pos[1]:] = self.img[:,:W-self.pos[1]]
             return layer
-        layer[self.pos[1]:self.pos[1]+h, self.pos[0]:self.pos[0]+w] = self.img
+        layer[self.pos[0]:self.pos[0]+h, self.pos[1]:self.pos[1]+w] = self.img
         return layer 
 
 def draw(images):
@@ -71,6 +76,7 @@ def draw(images):
     return output
 
 def fitness_func(score):
+    # return some score function
     return score
 
 def weighted_random_choice(fitness):
@@ -97,11 +103,11 @@ def new_generation(parents, size):
         len_imgs = len(parents)
         img1 = parents[np.random.randint(low=0,high=len_imgs)]
         for extra in img1:
-            scale_x = np.random.normal(loc=extra.scale[1],scale=1) + 1
-            scale_y = np.random.normal(loc=extra.scale[0],scale=1) + 1
+            y = np.abs(np.random.normal(loc=extra.pos[0],scale=1))
+            x = np.abs(np.random.normal(loc=extra.pos[1],scale=1))
+            scale_y = np.abs(np.random.normal(loc=extra.scale[0],scale=1))
+            scale_x = np.abs(np.random.normal(loc=extra.scale[1],scale=1))
             angle = np.random.normal(loc=extra.angle,scale=1)
-            x = np.random.normal(loc=extra.pos[1],scale=1) 
-            y = np.random.normal(loc=extra.pos[0],scale=1)
             chunks.append(Chunk(extra.img,[scale_y,scale_x],angle,[int(y),int(x)]))
         generation.append(chunks)
     return generation
@@ -113,19 +119,20 @@ def fitness(generation):
         fitness[i] = fitness_func(score)
     return fitness
 
-generation_size = 20
+generation_size = 100
 number_of_best = 2
 generation = [[Chunk(img,[1,1],np.random.randint(low=-180,high=180),[np.random.randint(low=0,high=H),np.random.randint(low=0,high=W)]) for img in extracted] for i in range(generation_size)]
 
-num_iterations = 10
-iterations = np.arange(start=0,stop=num_iterations,step=1,dtype=np.uint8)
+num_iterations = 100
+iterations = np.arange(start=0,stop=num_iterations,step=1)
 best_score = []
 average_score = []
 for i in iterations:
     print(i)
     fit = fitness(generation)
     output = draw(generation[max(fit.iteritems(), key=operator.itemgetter(0))[0]])
-    cv.imwrite("{:s}/out_{:d}.png".format(args.output,i), output)   
+    if i % 10 == 0:
+        cv.imwrite("{:s}/out_{:d}.png".format(args.output,i), output)   
     best_score.append(max(fit.iteritems(), key=operator.itemgetter(1))[1])
     average_score.append(sum(i for i in fit.values())/(len(fit.keys())))
     parents = [generation[weighted_random_choice(fit)] for i in range(int(generation_size/2) - number_of_best)]

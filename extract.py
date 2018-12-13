@@ -9,14 +9,18 @@ def extract(image, cnts, dest):
     i = 0
     for contour in cnts:
         (x, y, w, h) = cv.boundingRect(contour)
-        transparent_copy = np.zeros(image.shape,dtype="uint8")
+        transparent_rect = np.zeros((h,w,4),dtype=np.uint8)
         copy = image.copy()
         cv.drawContours(copy, [contour], -1, (255,255,255,255), 0)
         for xx in range(copy.shape[1]):
             for yy in range(copy.shape[0]):
                 if cv.pointPolygonTest(contour,(xx,yy),False) > 0:
-                    transparent_copy[yy,xx] = copy[yy,xx]
-        cv.imwrite("{:s}/c_{:d}.png".format(dest,i), transparent_copy)   
+                    transparent_rect[yy-y,xx-x] = copy[yy,xx]
+        # size = max(w,h)
+        # transparent_square = np.zeros((size,size,4),dtype=np.uint8)      
+        # cv.imshow("rect",transparent_square)
+        # cv.waitKey(0)
+        cv.imwrite("{:s}/c_{:d}.png".format(dest,i), transparent_rect)   
         i = i + 1
     print("...Done")
 
