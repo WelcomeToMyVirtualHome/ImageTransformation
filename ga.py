@@ -51,19 +51,23 @@ class Chunk:
 
     def put(self):
         layer = np.zeros(image.shape, dtype=np.uint8)
-        (h, w) = self.img.shape[:2]
-        # TODO fix, enable putting extracted image partially in the image 
-        if self.pos[0] + h >= H and self.pos[1] + w >= W:
-            layer[self.pos[0]:,self.pos[1]:] = self.img[:H-self.pos[0],:W-self.pos[1]]
-            return layer
-        elif self.pos[0] + h >= H:
-            layer[self.pos[0]:,self.pos[1]:self.pos[1]+w] = self.img[:H-self.pos[0],:]
-            return layer
-        elif self.pos[1] + w >= W:
-            layer[self.pos[0]:self.pos[0]+h,self.pos[1]:] = self.img[:,:W-self.pos[1]]
-            return layer
-        layer[self.pos[0]:self.pos[0]+h, self.pos[1]:self.pos[1]+w] = self.img
-        return layer 
+      
+        x, y = self.pos[1], self.pos[1]
+        h1, w1 = layer.shape[:2]
+        h2, w2 = self.img.shape[:2]
+
+        x1min = max(0, x)
+        y1min = max(0, y)
+        x1max = max(min(x + w2, w1), 0)
+        y1max = max(min(y + h2, h1), 0)
+
+        x2min = max(0, -x)
+        y2min = max(0, -y)
+        x2max = min(-x + w1, w2)
+        y2max = min(-y + h1, h2)
+
+        layer[y1min:y1max, x1min:x1max] += self.img[y2min:y2max, x2min:x2max]
+        return layer   
 
 def draw(images):
     output = np.zeros(image.shape, dtype=np.uint8)
@@ -75,10 +79,6 @@ def draw(images):
         output[cnd] = layer[cnd]
     return output
 
-def fitness_func(score):
-    # return some score function
-    return score
-
 def weighted_random_choice(fitness):
     max = sum(fitness.values())
     pick = np.random.uniform(0, max)
@@ -89,37 +89,48 @@ def weighted_random_choice(fitness):
             return key
 
 def get_best(generation,fitness,number_of_best):
-    # TODO fix
     sorted_fitness = sorted(fitness, key=fitness.get)
-    print(sorted_fitness[len(sorted_fitness) - number_of_best:])
     best = [generation[i] for i in sorted_fitness[len(sorted_fitness) - number_of_best:]]
     return best
 
-def new_generation(parents, size):
+def new_generation(parents, size, number_of_best):
     generation = []
-    while len(generation) != size:
-        # mutation only
+    while True:
         chunks = []
         len_imgs = len(parents)
-        img1 = parents[np.random.randint(low=0,high=len_imgs)]
+        ind1 = np.random.randint(low=0,high=len_imgs)
+        ind2 = np.random.randint(low=0,high=len_imgs)
+        while ind1 == ind2:
+            ind2 = np.random.randint(low=0,high=len_imgs)
+        img1 = parents[ind1]
+        img2 = parents[ind2]
         for extra in img1:
-            y = np.abs(np.random.normal(loc=extra.pos[0],scale=1))
-            x = np.abs(np.random.normal(loc=extra.pos[1],scale=1))
+            y = np.random.normal(loc=extra.pos[0],scale=H/2)
+            x = np.random.normal(loc=extra.pos[1],scale=W/2)
             scale_y = np.abs(np.random.normal(loc=extra.scale[0],scale=1))
             scale_x = np.abs(np.random.normal(loc=extra.scale[1],scale=1))
             angle = np.random.normal(loc=extra.angle,scale=1)
-            chunks.append(Chunk(extra.img,[scale_y,scale_x],angle,[int(y),int(x)]))
+            
+            chunks.append(Chunk(extra.img,[scale_y,scale_x],angle,[int(y)%H,int(x)%W]))
         generation.append(chunks)
+        if len(generation) == size - number_of_best:
+            break
     return generation
 
-def fitness(generation):
-    fitness = {}
-    for i in range(len(generation)):
-        score = ssim(image,draw(generation[i]),multichannel=True)
-        fitness[i] = fitness_func(score)
-    return fitness
+def fitness_func(score,i):
+    # return some score function
+    return score
 
-generation_size = 100
+def fitness(generation, i):
+    n_fitness = {}
+    fitness = {}
+    for g in range(len(generation)):
+        score = ssim(image,draw(generation[g]),multichannel=True)
+        n_fitness[g] = fitness_func(score,i)
+        fitness[g] = score
+    return fitness, n_fitness
+
+generation_size = 10
 number_of_best = 2
 generation = [[Chunk(img,[1,1],np.random.randint(low=-180,high=180),[np.random.randint(low=0,high=H),np.random.randint(low=0,high=W)]) for img in extracted] for i in range(generation_size)]
 
@@ -128,16 +139,16 @@ iterations = np.arange(start=0,stop=num_iterations,step=1)
 best_score = []
 average_score = []
 for i in iterations:
-    print(i)
-    fit = fitness(generation)
+    print("i={:d}".format(i))
+    (fit, n_fit) = fitness(generation,i)
     output = draw(generation[max(fit.iteritems(), key=operator.itemgetter(0))[0]])
     if i % 10 == 0:
         cv.imwrite("{:s}/out_{:d}.png".format(args.output,i), output)   
     best_score.append(max(fit.iteritems(), key=operator.itemgetter(1))[1])
-    average_score.append(sum(i for i in fit.values())/(len(fit.keys())))
-    parents = [generation[weighted_random_choice(fit)] for i in range(int(generation_size/2) - number_of_best)]
-    generation = new_generation(parents,generation_size)   
-    # generation = generation + get_best(generation,fit,number_of_best)
+    average_score.append(sum(fit.values())/(len(fit.values())))
+    parents = [generation[weighted_random_choice(n_fit)] for i in range(int(generation_size/2) - number_of_best)]
+    n_generation = new_generation(parents,generation_size,number_of_best)   
+    generation = n_generation + get_best(generation,n_fit,number_of_best)
 
 plt.figure(num=None, figsize=(10, 5), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(iterations,best_score,'-r',label="best")
