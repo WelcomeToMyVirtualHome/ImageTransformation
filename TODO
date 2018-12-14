@@ -1,0 +1,3 @@
+- Fix rotation
+- Fix resizing
+- Encode features as bit arrays for crossover purposes
