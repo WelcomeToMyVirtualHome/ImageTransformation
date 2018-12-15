@@ -31,18 +31,20 @@ for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
     extracted.append(cv.imread(img,cv.IMREAD_UNCHANGED))
 
 (H, W) = image.shape[:2]
+print('Image shape = [{:d},{:d}]'.format(H,W))
+print("Score: identity={:.2f}, empty={:.2f}".format(ssim(image,image,multichannel=True),ssim(image,np.zeros(image.shape,dtype=np.uint8),multichannel=True)))
 
 def bitfield(n):
-    return [int(digit) for digit in bin(n)[2:]]
+    return [bool(digit) for digit in bin(n)[2:]]
 
-def bitfield_int(integer,integer_max):
+def int_to_bitfield(integer,integer_max):
     if integer < integer_max:
         n = int(np.log2(integer_max) + 1)
         integer_bits = bitfield(integer)
         length = len(integer_bits)
         if n > length:
             integer_bits.reverse()
-            integer_bits.extend(np.zeros(n - length,dtype=np.uint8))
+            integer_bits.extend(np.zeros(n - length,dtype=np.bool_))
             integer_bits.reverse()
         return integer_bits
     else:
@@ -50,8 +52,8 @@ def bitfield_int(integer,integer_max):
         integer_bits = bitfield(integer)
         return integer_bits
 
-print('Image shape = [{:d},{:d}]'.format(H,W))
-print("Score: identity={:.2f}, empty={:.2f}".format(ssim(image,image,multichannel=True),ssim(image,np.zeros(image.shape,dtype=np.uint8),multichannel=True)))
+def bitfield_to_int(bitfield):
+    return sum([(2*int(bitfield[len(bitfield)-1-i]))**i for i in range(0,len(bitfield))])
 
 class Chunk:
     def __init__(self,img,scale,angle,pos):
@@ -115,6 +117,7 @@ def get_best(generation,fitness,number_of_best):
 
 def new_generation(parents, size, number_of_best):
     generation = []
+    mutation_p = 0.05
     while True:
         chunks = []
         len_imgs = len(parents)
@@ -124,17 +127,30 @@ def new_generation(parents, size, number_of_best):
             ind2 = np.random.randint(low=0,high=len_imgs)
         img1 = parents[ind1]
         img2 = parents[ind2]
-        for extra1,extra2 in zip(img1,img2):
-            pos_1y, pos_1x = bitfield_int(extra1.pos[0],H), bitfield_int(extra1.pos[1],W)
-            pos_2y, pos_2x = bitfield_int(extra2.pos[0],H), bitfield_int(extra2.pos[1],W)
 
-            y = np.random.normal(loc=extra1.pos[0],scale=H/2)
-            x = np.random.normal(loc=extra1.pos[1],scale=W/2)
+        for extra1,extra2 in zip(img1,img2):
+            pos_1y, pos_1x = int_to_bitfield(extra1.pos[0],H), int_to_bitfield(extra1.pos[1],W)
+            pos_2y, pos_2x = int_to_bitfield(extra2.pos[0],H), int_to_bitfield(extra2.pos[1],W)
+
+            cross = np.random.randint(low=1,high=len(pos_1y)-1)
+            pos_chy = pos_1y[:cross] + pos_2y[cross:]
+            
+            cross = np.random.randint(low=1,high=len(pos_1x)-1)
+            pos_chx = pos_1x[:cross] + pos_2x[cross:]
+            
+            mutation_ps = np.random.random(len(pos_chx)+len(pos_chy))
+            for i,(x,y) in enumerate(zip(pos_chx,pos_chy)):
+                if mutation_ps[i] < mutation_p:
+                    pos_chy[i] = not y 
+                if mutation_ps[i+len(pos_chy)] < mutation_p:
+                    pos_chx[i] = not x
+                
+            
             scale_y = np.abs(np.random.normal(loc=extra1.scale[0],scale=1))
             scale_x = np.abs(np.random.normal(loc=extra1.scale[1],scale=1))
             angle = np.random.normal(loc=extra1.angle,scale=1)
             
-            chunks.append(Chunk(extra1.img,[scale_y,scale_x],angle,[int(y)%H,int(x)%W]))
+            chunks.append(Chunk(extra1.img,[scale_y,scale_x],angle,[bitfield_to_int(pos_chy)%H,bitfield_to_int(pos_chx)%W]))
         generation.append(chunks)
         if len(generation) == size - number_of_best:
             break
