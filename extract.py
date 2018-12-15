@@ -16,10 +16,6 @@ def extract(image, cnts, dest):
             for yy in range(copy.shape[0]):
                 if cv.pointPolygonTest(contour,(xx,yy),False) > 0:
                     transparent_rect[yy-y,xx-x] = copy[yy,xx]
-        # size = max(w,h)
-        # transparent_square = np.zeros((size,size,4),dtype=np.uint8)      
-        # cv.imshow("rect",transparent_square)
-        # cv.waitKey(0)
         cv.imwrite("{:s}/c_{:d}.png".format(dest,i), transparent_rect)   
         i = i + 1
     print("...Done")
@@ -41,10 +37,10 @@ if src is None:
 
 image = cv.imread(args.image,cv.IMREAD_UNCHANGED)
 
-hight = 200
+height = 255
 (h,w) = image.shape[:2]
-scale = float(hight)/h
-n_h,n_w = hight, image.shape[0]*scale
+scale = float(height)/h
+n_h,n_w = height, image.shape[0]*scale
 image = cv.resize(image,(int(n_h),int(n_w)))
 
 gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)

@@ -32,6 +32,25 @@ for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
 
 (H, W) = image.shape[:2]
 
+def bitfield(n):
+    return [int(digit) for digit in bin(n)[2:]]
+
+def bitfield_int(integer,integer_max):
+    if integer < integer_max:
+        n = int(np.log2(integer_max) + 1)
+        integer_bits = bitfield(integer)
+        length = len(integer_bits)
+        if n > length:
+            integer_bits.reverse()
+            integer_bits.extend(np.zeros(n - length,dtype=np.uint8))
+            integer_bits.reverse()
+        return integer_bits
+    else:
+        n = int(np.log2(integer) + 1)
+        integer_bits = bitfield(integer)
+        return integer_bits
+
+print('Image shape = [{:d},{:d}]'.format(H,W))
 print("Score: identity={:.2f}, empty={:.2f}".format(ssim(image,image,multichannel=True),ssim(image,np.zeros(image.shape,dtype=np.uint8),multichannel=True)))
 
 class Chunk:
@@ -46,7 +65,7 @@ class Chunk:
         self.img = imutils.rotate(self.img, self.angle)
 
     def resize(self):
-        # TODO fix
+        # can't rescale to shape=(0,0)
         self.img = cv.resize(self.img,(int(self.img.shape[1]*self.scale[1]),int(self.img.shape[0]*self.scale[0])))
 
     def put(self):
@@ -68,6 +87,7 @@ class Chunk:
 
         layer[y1min:y1max, x1min:x1max] += self.img[y2min:y2max, x2min:x2max]
         return layer   
+
 
 def draw(images):
     output = np.zeros(image.shape, dtype=np.uint8)
@@ -104,14 +124,17 @@ def new_generation(parents, size, number_of_best):
             ind2 = np.random.randint(low=0,high=len_imgs)
         img1 = parents[ind1]
         img2 = parents[ind2]
-        for extra in img1:
-            y = np.random.normal(loc=extra.pos[0],scale=H/2)
-            x = np.random.normal(loc=extra.pos[1],scale=W/2)
-            scale_y = np.abs(np.random.normal(loc=extra.scale[0],scale=1))
-            scale_x = np.abs(np.random.normal(loc=extra.scale[1],scale=1))
-            angle = np.random.normal(loc=extra.angle,scale=1)
+        for extra1,extra2 in zip(img1,img2):
+            pos_1y, pos_1x = bitfield_int(extra1.pos[0],H), bitfield_int(extra1.pos[1],W)
+            pos_2y, pos_2x = bitfield_int(extra2.pos[0],H), bitfield_int(extra2.pos[1],W)
+
+            y = np.random.normal(loc=extra1.pos[0],scale=H/2)
+            x = np.random.normal(loc=extra1.pos[1],scale=W/2)
+            scale_y = np.abs(np.random.normal(loc=extra1.scale[0],scale=1))
+            scale_x = np.abs(np.random.normal(loc=extra1.scale[1],scale=1))
+            angle = np.random.normal(loc=extra1.angle,scale=1)
             
-            chunks.append(Chunk(extra.img,[scale_y,scale_x],angle,[int(y)%H,int(x)%W]))
+            chunks.append(Chunk(extra1.img,[scale_y,scale_x],angle,[int(y)%H,int(x)%W]))
         generation.append(chunks)
         if len(generation) == size - number_of_best:
             break
