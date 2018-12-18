@@ -4,21 +4,23 @@ import cv2 as cv
 import argparse
 import os, errno
 
+
 def extract(image, cnts, dest):
     print("Extracting...")
     i = 0
     for contour in cnts:
         (x, y, w, h) = cv.boundingRect(contour)
-        transparent_rect = np.zeros((h,w,4),dtype=np.uint8)
+        transparent_rect = np.zeros((h, w, 4), dtype=np.uint8)
         copy = image.copy()
-        cv.drawContours(copy, [contour], -1, (255,255,255,255), 0)
+        cv.drawContours(copy, [contour], -1, (255, 255, 255, 255), 0)
         for xx in range(copy.shape[1]):
             for yy in range(copy.shape[0]):
-                if cv.pointPolygonTest(contour,(xx,yy),False) > 0:
-                    transparent_rect[yy-y,xx-x] = copy[yy,xx]
-        cv.imwrite("{:s}/c_{:d}.png".format(dest,i), transparent_rect)   
+                if cv.pointPolygonTest(contour, (xx, yy), False) > 0:
+                    transparent_rect[yy - y, xx - x] = copy[yy, xx]
+        cv.imwrite("{:s}/c_{:d}.png".format(dest, i), transparent_rect)
         i = i + 1
     print("...Done")
+
 
 parser = argparse.ArgumentParser(description='Extract')
 parser.add_argument('--image', help='Path to input image.png', default='shapes.png')
@@ -35,21 +37,20 @@ if src is None:
     print('Could not open or find the image:', args.image)
     exit(0)
 
-image = cv.imread(args.image,cv.IMREAD_UNCHANGED)
+image = cv.imread(args.image, cv.IMREAD_UNCHANGED)
 
 height = 255
-(h,w) = image.shape[:2]
-scale = float(height)/h
-n_h,n_w = height, image.shape[0]*scale
-image = cv.resize(image,(int(n_h),int(n_w)))
+(h, w) = image.shape[:2]
+scale = float(height) / h
+n_h, n_w = height, image.shape[0] * scale
+image = cv.resize(image, (int(n_h), int(n_w)))
 
 gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(2,2))
+kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
 closing = cv.morphologyEx(gray, cv.MORPH_CLOSE, kernel)
 closing = cv.GaussianBlur(closing, (3, 3), 0)
 edged = cv.Canny(closing, 50, 100)
 _, cnts, _ = cv.findContours(edged, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-cv.imwrite("{:s}/input_resized.png".format(args.folder), image)         
-extract(image,cnts,args.folder)
-
+cv.imwrite("{:s}/input_resized.png".format(args.folder), image)
+extract(image, cnts, args.folder)
