@@ -172,12 +172,29 @@ def fitness_func(score, i):
     # return some score function
     return score
 
+def scoreSubimage(image1, image2):
+    score = (image1.mean() - image2.mean())**2 + sys.float_info.epsilon
+    return 1/score
+
+def meanRootSquareCmp(image, image2, multichannel, n, m):
+    if image.shape != image2.shape:
+        return -1
+    (W, H) = image[:, :, 0].shape
+    score = 0
+    w = W // n
+    h = H // m
+    for i in range(n):
+        for j in range(m):
+            score += scoreSubimage(image[w*i : w*(i+1)-1, h*j : h*(j+1)-1],
+                                   image2[w * i:w * (i + 1) - 1, h * j:h * (j + 1) - 1])
+    return score/(n*m)
 
 def fitness(generation, i):
     n_fitness = {}
     fitness = {}
     for g in range(len(generation)):
-        score = ssim(image, draw(generation[g]), multichannel=True)
+        # score = ssim(image, draw(generation[g]), multichannel=True)
+        score = meanRootSquareCmp(image, draw(generation[g]), multichannel=True, n=10, m=10)
         n_fitness[g] = fitness_func(score, i)
         fitness[g] = score
     return fitness, n_fitness
