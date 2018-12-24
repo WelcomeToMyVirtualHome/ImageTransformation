@@ -22,7 +22,7 @@ def extract(image, cnts, dest):
 
 parser = argparse.ArgumentParser(description='Extract')
 parser.add_argument('--image', help='Path to input image.png', default='shapes.png')
-parser.add_argument('--folder', help='Path to folder for preprocessed images', default='./input')
+parser.add_argument('--output', help='Path to folder for preprocessed images', default='./input')
 args = parser.parse_args()
 try:
     os.makedirs(args.folder)
