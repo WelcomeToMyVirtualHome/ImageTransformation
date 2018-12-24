@@ -1,3 +1,10 @@
 - Fix rotation
 - Fix resizing
 - Encode features as bit arrays for crossover purposes
+
+####### NEW ##########
+- split image to mesh - done (extract_lattice.py)
+- genome = flatten mesh: ABCDE -> A - image in square (0,0), B - (0,1), ... 
+	crossover - switching places of images
+	mutation - rotation, applying color mask, ...
+- if a_lattice -> 0 MSE -(some time)-> 0 ? 
