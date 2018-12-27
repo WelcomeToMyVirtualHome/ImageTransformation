@@ -3,12 +3,11 @@ import numpy as np
 import cv2 as cv
 import argparse
 import random as rng
-# import imutils
 from skimage.measure import compare_ssim as ssim
 import operator
 import matplotlib.pyplot as plt
 import glob
-import os, errno
+import os, errno, sys	
 import random
 import six
 
@@ -30,7 +29,8 @@ for img in glob.glob("{:s}//{:s}".format(args.output,"*.png")):
 
 image = cv.imread("{:s}//{:s}".format(args.input,"input_resized.png"),cv.IMREAD_UNCHANGED)
 cv.imwrite("{:s}/input.png".format(args.output), image)   
-    
+cv.imshow("original",image)
+
 extracted = []
 for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
     extracted.append(cv.imread(img,cv.IMREAD_UNCHANGED))
@@ -47,13 +47,27 @@ lattice_const = int(H/size)
 
 pos = [[i*lattice_const,j*lattice_const] for i in range(size) for j in range(size)]
 
+def scoreSubimage(image1, image2):
+    score = (image1.mean() - image2.mean())**2 + sys.float_info.epsilon
+    return 1/score
+
+def meanRootSquareCmp(image, image2, n, m):
+    if image.shape != image2.shape:
+        return -1
+    (W, H) = image[:, :, 0].shape
+    score = 0
+    for i in range(n):
+        for j in range(m):
+            score += scoreSubimage(image[lattice_const*i : lattice_const*(i+1), lattice_const*j : lattice_const*(j+1)],
+                                   image2[lattice_const*i:lattice_const*(i+1), lattice_const*j:lattice_const*(j+1)])
+    return score/(n*m)
 
 def draw(img):
 	output = np.zeros(image.shape,dtype=np.uint8)
 	for i,p in zip(img,pos):
 		output[p[0]:p[0]+lattice_const,p[1]:p[1]+lattice_const] = i
-	# cv.imshow("img",output)		
-	# cv.waitKey(0)
+	cv.imshow("img",output)		
+	cv.waitKey(1)
 	return output
 
 def weighted_random_choice(fitness):
@@ -75,15 +89,15 @@ def new_generation(parents, size, number_of_best):
     mutation_p = 0.05
     while True:
         len_imgs = len(parents)
-        ind1 = np.random.randint(low=0,high=len_imgs)
-        ind2 = np.random.randint(low=0,high=len_imgs)
-        while ind1 == ind2:
-            ind2 = np.random.randint(low=0,high=len_imgs)
-        img1 = parents[ind1]
-        img2 = parents[ind2]
+        indexes = np.random.randint(low=0,high=len_imgs,size=2)
+        while indexes[0] == indexes[1]:
+        	indexes = np.random.randint(low=0,high=len_imgs,size=2)
+       	img1 = parents[indexes[0]]
+        img2 = parents[indexes[1]]
         cross = np.random.randint(low=1,high=len(img1)-1)
         child = img1[:cross] + img2[cross:]
 
+        ## poor mutation, swapping two subimages
         if np.random.rand() < mutation_p:
         	indexes = np.random.randint(low=0,high=len(img1),size=2)
         	child[indexes[0]], child[indexes[1]] = child[indexes[1]], child[indexes[0]]
@@ -108,19 +122,20 @@ def new_generation(parents, size, number_of_best):
 
 def fitness_func(score,i):
     # return some score function
-    return score**((i+1)/100) + 10
+    return score*((i+1)/100) + 10
 
 def fitness(generation, i):
     n_fitness = {}
     fitness = {}
     for g in range(len(generation)):
-        score = ssim(image,draw(generation[g]),multichannel=True)
+        # score = ssim(image,draw(generation[g]),multichannel=True)
+        score = meanRootSquareCmp(image, draw(generation[g]), n=size, m=size)
         n_fitness[g] = fitness_func(score,i)
         fitness[g] = score
     return fitness, n_fitness
 
 img = extracted
-generation_size = 200
+generation_size = 1000
 number_of_best = 2
 generation = []
 for i in range(generation_size):
@@ -128,20 +143,25 @@ for i in range(generation_size):
 	random.shuffle(img) 
 	generation.append(img)
 
-num_iterations = 20
-iterations = np.arange(start=0,stop=num_iterations,step=1)
+iterations = []
 best_score = []
 average_score = []
-for i in iterations:
-    print("i={:d}".format(i))
-    (fit, n_fit) = fitness(generation,i)
-    output = draw(generation[max(fit.items(), key=operator.itemgetter(0))[0]])
-    cv.imwrite("{:s}/out_{:d}.png".format(args.output,i), output)   
-    best_score.append(max(fit.items(), key=operator.itemgetter(1))[1])
-    average_score.append(sum(fit.values())/(len(fit.values())))
-    parents = [generation[weighted_random_choice(n_fit)] for i in range(int(generation_size/2) - number_of_best)]
-    n_generation = new_generation(parents,generation_size,number_of_best)   
-    generation = n_generation + get_best(generation,n_fit,number_of_best)
+it = 0
+try:
+	while True:
+	    it += 1
+	    print("i={:d}".format(it))
+	    (fit, n_fit) = fitness(generation,i)
+	    output = draw(generation[max(fit.items(), key=operator.itemgetter(0))[0]])
+	    cv.imwrite("{:s}/out_{:d}.png".format(args.output,it), output)   
+	    best_score.append(max(fit.items(), key=operator.itemgetter(1))[1])
+	    iterations.append(it)
+	    average_score.append(sum(fit.values())/(len(fit.values())))
+	    parents = [generation[weighted_random_choice(n_fit)] for i in range(int(generation_size/2) - number_of_best)]
+	    n_generation = new_generation(parents,generation_size,number_of_best)   
+	    generation = n_generation + get_best(generation,n_fit,number_of_best)
+except KeyboardInterrupt:
+    pass
 
 plt.figure(num=None, figsize=(10, 5), dpi=80, facecolor='w', edgecolor='k')
 plt.plot(iterations,best_score,'-r',label="best")
