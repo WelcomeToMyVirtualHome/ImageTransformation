@@ -30,6 +30,7 @@ for img in glob.glob("{:s}//{:s}".format(args.output,"*.png")):
 image = cv.imread("{:s}//{:s}".format(args.input,"input_resized.png"),cv.IMREAD_UNCHANGED)
 cv.imwrite("{:s}/input.png".format(args.output), image)   
 cv.imshow("original",image)
+cv.waitKey(0)
 
 extracted = []
 for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
