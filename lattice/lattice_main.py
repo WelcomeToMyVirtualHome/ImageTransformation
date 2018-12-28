@@ -38,6 +38,7 @@ for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
 
 img = extracted
 n_imgs = len(extracted)
+img_indexes = np.arange(0,n_imgs,1)
 
 with open(args.params) as fp:
 	params = fp.readlines()
@@ -45,11 +46,14 @@ with open(args.params) as fp:
 n_size = int(params[0])
 size = int(params[1])
 
-
-generation_size = 200
-n_best = 10
+generation_size = 100
+n_best = 2
 n_parents = int(generation_size/2) - n_best
-
+generation = []
+for i in range(generation_size):
+	img = extracted.copy()
+	random.shuffle(img) 
+	generation.append(img)
 
 (H, W) = image.shape[:2]
 
@@ -90,9 +94,9 @@ def weighted_random_choice(fitness):
         if current > pick:
             return key
 
-def get_best(generation,fitness,number_of_best):
+def get_best(generation,fitness):
     sorted_fitness = sorted(fitness, key=fitness.get)
-    best = [generation[i] for i in sorted_fitness[len(sorted_fitness) - number_of_best:]]
+    best = [generation[i] for i in sorted_fitness[len(sorted_fitness) - n_best:]]
     return best
 
 def order1_crossover(parent1, parent2):
@@ -102,16 +106,11 @@ def order1_crossover(parent1, parent2):
 	child = [[-1,np.zeros((lattice_const,lattice_const,4))] for i in range(n_imgs)]
 	child[min(cross):max(cross)] = parent1[min(cross):max(cross)]
 	child_inds = [ch[0] for ch in child]
-	img_indexes = np.arange(0,n_imgs,1)
 	missing_pictures = [i for i in img_indexes if i not in child_inds]
 	missing_pictures.sort()
 	parent2_inds = [p[0] for p in parent2]
-	missing_index = 0
-	for i in range(n_imgs):
-		if i < min(cross) or i >= max(cross):		
-			ind = parent2_inds.index(missing_pictures[missing_index])
-			child[i] = parent2[ind]
-			missing_index += 1
+	child[:min(cross)] = [parent2[parent2_inds.index(missing_pictures[i])] for i in range(0,min(cross))]
+	child[max(cross):] = [parent2[parent2_inds.index(missing_pictures[i+min(cross)])] for i in range(0,n_imgs-max(cross))]
 	return child
 
 def single_swap_mutation(child):
@@ -121,11 +120,12 @@ def single_swap_mutation(child):
 	child[swap[0]], child[swap[1]] = child[swap[1]], child[swap[0]]
 	return child
 
-def new_generation(parents, size, number_of_best):
+def new_generation(parents):
     children = []
     mutation_p = 0.05
     child_p = 0.7
-    while True:
+    p = np.random.rand(2,n_parents + n_best) 
+    for i in range(n_parents + n_best):
         indexes = np.random.randint(low=0,high=n_parents,size=2)
         while indexes[0] == indexes[1]:
         	indexes = np.random.randint(low=0,high=n_parents,size=2)
@@ -133,20 +133,17 @@ def new_generation(parents, size, number_of_best):
         img2 = parents[indexes[1]]
 
         child = order1_crossover(img1, img2)
-        p = np.random.rand(2)
-        if p[0] < mutation_p:
+        if p[0][i] < mutation_p:
         	child = single_swap_mutation(child)
 
-        if p[1] < child_p:
+        if p[1][i] < child_p:
         	children.append(child)
         else:
         	children.append(img1)
-        if len(parents) + len(children) == size - number_of_best:
-        	break
     return parents + children
 
 def fitness_func(score,i):
-    return score*((i+1)/100) + 10
+    return score*((i+1)/1000) + 1
 
 def fitness(generation, i):
     n_fitness = {}
@@ -158,11 +155,6 @@ def fitness(generation, i):
         fitness[g] = score
     return fitness, n_fitness
 
-generation = []
-for i in range(generation_size):
-	img = extracted.copy()
-	random.shuffle(img) 
-	generation.append(img)
 
 iterations = []
 best_score = []
@@ -179,8 +171,9 @@ try:
 	    iterations.append(it)
 	    average_score.append(sum(fit.values())/(len(fit.values())))
 	    parents = [generation[weighted_random_choice(n_fit)] for i in range(n_parents)]
-	    n_generation = new_generation(parents,generation_size,n_best)   
-	    generation = n_generation + get_best(generation,n_fit,n_best)
+	    n_generation = new_generation(parents)   
+	    generation = n_generation + get_best(generation,n_fit)
+	    print(len(generation))
 except KeyboardInterrupt:
     pass
 
