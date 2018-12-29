@@ -1,20 +1,20 @@
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <string>
 #include <dirent.h>
 #include <fstream>
-#include <assert.h> 
+#include "image.h"
+#include "geneticAlgorithm.h"
 
-using namespace cv;
 
 const char* INPUT_RESIZED = "input_resized.png";
-std::vector<Mat> extracted;
+std::vector<cv::Mat> extracted;
 std::vector<int> params;
-Mat image;
+cv::Mat image;
 
-std::vector<std::vector<Mat> > generation;
+std::vector<Image> generation;
 std::pair<int,int> *lattice;
 int lattice_const;
 
@@ -23,25 +23,24 @@ void CreateLattice()
     lattice_const = params[0]/params[1];
     int size = params[1];
     lattice = new std::pair<int,int>[size*size];
-    for(size_t i = 0; i < size; i++)
-        for(size_t j = 0; j < size; j++)
+    for(int i = 0; i < size; i++)
+        for(int j = 0; j < size; j++)
             lattice[i*size+j] = std::pair<int,int>(i*lattice_const,j*lattice_const);
-        
 }
 
 int Load(int argc, char **argv)
 {
     char buffer[50];
     sprintf(buffer, "%s/%s", argv[1], INPUT_RESIZED);
-    image = imread(buffer, -1);
+    image = cv::imread(buffer, cv::IMREAD_UNCHANGED);
 
     if(!image.data)
     {
         std::cout <<  "Could not open or find the image" << "\n";
         return -1;
     }
-    imshow("image",image);
-    waitKey(0);
+    cv::imshow("image",image);
+    cv::waitKey(0);
     DIR *dir;
     struct dirent *ent;
     printf("Reading from %s\n", argv[1]);
@@ -51,7 +50,7 @@ int Load(int argc, char **argv)
         {
             printf("%s\n", ent->d_name);
             sprintf(buffer, "%s/%s", argv[1], ent->d_name);
-            Mat img = imread(buffer, -1);
+            cv::Mat img = cv::imread(buffer, cv::IMREAD_UNCHANGED);
             if(img.data && std::string(ent->d_name).compare(std::string(INPUT_RESIZED)) != 0)
             {
                 extracted.push_back(img);
@@ -64,14 +63,10 @@ int Load(int argc, char **argv)
         perror("LoadImages: Empty directory");
         return EXIT_FAILURE;
     }
-    return 0;
-}
 
-void ReadParams(char* params_file)
-{
     std::string line;
     std::ifstream params_stream;
-    params_stream.open(params_file);
+    params_stream.open(argv[3]);
     if (params_stream.is_open())
     {
         while(std::getline(params_stream,line))
@@ -81,18 +76,19 @@ void ReadParams(char* params_file)
         }
         params_stream.close();
     }
+    return 0;
 }
 
-void DrawImage(std::vector<Mat> images)
+void DrawImage(std::vector<cv::Mat> images, cv::Mat &output, bool show=false)
 {
-    Mat output(image.rows, image.cols, image.type());
-    size_t len = extracted.size() * extracted.size();
+    int len = extracted.size() * extracted.size();
     for(int i = 0; i < len; i++)
         if(output.type() == extracted[i].type() && extracted[i].rows <= output.rows and extracted[i].cols <= output.cols)
-            extracted[i].copyTo(output(Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));
-    imshow("img",output);
-    waitKey(0);
-
+            extracted[i].copyTo(output(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));
+    if(show){
+        cv::imshow("image",output);
+        cv::waitKey(0);
+    }
 }
 
 int main(int argc, char** argv)
@@ -103,9 +99,10 @@ int main(int argc, char** argv)
         return -1;
     }
     Load(argc, argv);
-    ReadParams(argv[3]);
     CreateLattice();
-    DrawImage(extracted);
+    
+    cv::Mat output(image.rows, image.cols, image.type());
+    DrawImage(extracted,output,true);
 
     return 0;
 }
