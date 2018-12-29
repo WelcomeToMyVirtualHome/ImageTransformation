@@ -10,7 +10,7 @@
 
 
 const char* INPUT_RESIZED = "input_resized.png";
-std::vector<cv::Mat> extracted;
+Image extracted;
 std::vector<int> params;
 cv::Mat image;
 
@@ -46,6 +46,7 @@ int Load(int argc, char **argv)
     printf("Reading from %s\n", argv[1]);
     if((dir = opendir(argv[1])) != NULL)
     {
+        int i = 0;
         while((ent = readdir(dir)) != NULL)
         {
             printf("%s\n", ent->d_name);
@@ -53,7 +54,7 @@ int Load(int argc, char **argv)
             cv::Mat img = cv::imread(buffer, cv::IMREAD_UNCHANGED);
             if(img.data && std::string(ent->d_name).compare(std::string(INPUT_RESIZED)) != 0)
             {
-                extracted.push_back(img);
+                extracted.add(i++,img);
             }
         }
         closedir(dir);
@@ -79,16 +80,29 @@ int Load(int argc, char **argv)
     return 0;
 }
 
-void DrawImage(std::vector<cv::Mat> images, cv::Mat &output, bool show=false)
+void DrawImage(Image img, cv::Mat &output, bool show=false, int wait_ms = 0)
 {
     int len = extracted.size() * extracted.size();
     for(int i = 0; i < len; i++)
-        if(output.type() == extracted[i].type() && extracted[i].rows <= output.rows and extracted[i].cols <= output.cols)
-            extracted[i].copyTo(output(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));
-    if(show){
+        if(output.type() == img[i].type() && img[i].rows <= output.rows and img[i].cols <= output.cols)
+            img[i].copyTo(output(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));
+    if(show)
+    {
         cv::imshow("image",output);
-        cv::waitKey(0);
+        cv::waitKey(wait_ms);
     }
+}
+
+std::vector<Image> CreateGeneration(int n)
+{
+    generation.reserve(n);
+    for(int i = 0; i < n; i++)
+    {
+        Image newImage(extracted);
+        newImage.shuffle();
+        generation.push_back(newImage);
+    }
+    return generation;
 }
 
 int main(int argc, char** argv)
@@ -100,9 +114,14 @@ int main(int argc, char** argv)
     }
     Load(argc, argv);
     CreateLattice();
-    
+
     cv::Mat output(image.rows, image.cols, image.type());
-    DrawImage(extracted,output,true);
+
+    std::vector<Image> generation = CreateGeneration(10);
+    for(auto img : generation)
+    {
+        DrawImage(img,output,true,0);
+    }
 
     return 0;
 }
