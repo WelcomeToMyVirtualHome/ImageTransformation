@@ -8,7 +8,6 @@
 #include "image.h"
 #include "geneticAlgorithm.h"
 
-
 const char* INPUT_RESIZED = "input_resized.png";
 Image extracted;
 std::vector<int> params;
@@ -38,6 +37,10 @@ int Load(int argc, char **argv)
     {
         std::cout <<  "Could not open or find the image" << "\n";
         return -1;
+    }
+    if(image.cols != image.rows){
+        std::cout << "Image not square" << "\n";
+        return 0;
     }
     cv::imshow("image",image);
     cv::waitKey(0);
@@ -80,31 +83,6 @@ int Load(int argc, char **argv)
     return 0;
 }
 
-void DrawImage(Image img, cv::Mat &output, bool show=false, int wait_ms = 0)
-{
-    int len = extracted.size() * extracted.size();
-    for(int i = 0; i < len; i++)
-        if(output.type() == img[i].type() && img[i].rows <= output.rows and img[i].cols <= output.cols)
-            img[i].copyTo(output(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));
-    if(show)
-    {
-        cv::imshow("image",output);
-        cv::waitKey(wait_ms);
-    }
-}
-
-std::vector<Image> CreateGeneration(int n)
-{
-    generation.reserve(n);
-    for(int i = 0; i < n; i++)
-    {
-        Image newImage(extracted);
-        newImage.shuffle();
-        generation.push_back(newImage);
-    }
-    return generation;
-}
-
 int main(int argc, char** argv)
 {
     if(argc < 4)
@@ -115,13 +93,17 @@ int main(int argc, char** argv)
     Load(argc, argv);
     CreateLattice();
 
+    GeneticAlgorithm ga;
+    ga.CreateGeneration(extracted, image, 10);
+
     cv::Mat output(image.rows, image.cols, image.type());
 
-    std::vector<Image> generation = CreateGeneration(10);
-    for(auto img : generation)
+    for(auto img : ga.getGeneration())
     {
-        DrawImage(img,output,true,0);
+        img.put(lattice, lattice_const,true);
+        std::cout << ga.MSE(img.getImage(),img.getImage(),image,5) << "\n";
     }
+
 
     return 0;
 }
