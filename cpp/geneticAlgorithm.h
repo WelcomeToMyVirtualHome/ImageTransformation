@@ -36,12 +36,6 @@ public:
 		return mse/n/n;
 	}
 
-	cv::Mat draw(const cv::Mat &img1, bool show=false)
-	{
-		//TODO
-		return img1;
-	}
-
 	float fitness_func(float score, int i){
 		return score*((i+1.0)/1000.0) + 1.0;
 	}
@@ -54,7 +48,7 @@ public:
 		for (uint g = 0; g < generation.size(); ++g)
 		{
 			//size = 5, has to be changed
-			score = MSE(generation[g].getImage(), draw(generation[g].getImage(), true), image, 5); 
+			score = MSE(generation[g].getImage(), generation[g].getImage(), image, 5); 
    	      	n_fitness[g] = fitness_func(score,i);
    			fitness[g] = score;
 		}
@@ -62,16 +56,29 @@ public:
 	}
 
 	//TEST
-	std::vector<Image> selectParents(int nParents)
-	{
-		std::random_device rd;     // only used once to initialise (seed) engine
-		std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-		std::uniform_int_distribution<int> uni(0,generation.size() - 1); // guaranteed unbiased
-
+	std::vector<Image> selectParents(int nParents, std::vector<float> n_fitness )
+	{	
 		std::vector<Image> parents;
 		for (int i = 0; i < nParents; ++i)
-			parents.push_back(generation[uni(rng)]);
+			parents.push_back(generation[weighted_random_choice(n_fitness)]);
 		return parents;
+	}
+
+	int weighted_random_choice(std::vector<float> n_fitness)
+	{
+		float max = std::accumulate(n_fitness.begin(), n_fitness.end(), 0.0f);
+		std::random_device rd;     // only used once to initialise (seed) engine
+		std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+		std::uniform_real_distribution<float> uni(0,max); // guaranteed unbiased
+		float pick = uni(rng);
+		float current = 0;
+		int size = n_fitness.size();
+		for (int i = 0; i < size; ++i)
+		{
+			current += n_fitness[i];
+			if(current > pick)
+				return i;
+		}
 	}
 
 	template <typename T>

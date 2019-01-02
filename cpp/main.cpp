@@ -106,7 +106,7 @@ int main(int argc, char** argv)
     // }
    
     auto [fitness, n_fitness] = ga.Fitness(ga.getGeneration(), 1, image);
-    for (int i = 0; i < fitness.size(); ++i)
+    for (uint i = 0; i < fitness.size(); ++i)
     {
     	std::cout << fitness[i] << " " << n_fitness[i] << std::endl;
     }
