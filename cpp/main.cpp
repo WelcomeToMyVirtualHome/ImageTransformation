@@ -8,6 +8,7 @@
 #include "image.h"
 #include "geneticAlgorithm.h"
 
+
 const char* INPUT_RESIZED = "input_resized.png";
 Image extracted;
 std::vector<int> params;
@@ -98,12 +99,17 @@ int main(int argc, char** argv)
 
     cv::Mat output(image.rows, image.cols, image.type());
 
-    for(auto img : ga.getGeneration())
+    // for(auto img : ga.getGeneration())
+    // {
+    //     img.put(lattice, lattice_const,true);
+    //     std::cout << ga.MSE(img.getImage(),img.getImage(),image,5) << "\n";
+    // }
+   
+    auto [fitness, n_fitness] = ga.Fitness(ga.getGeneration(), 1, image);
+    for (int i = 0; i < fitness.size(); ++i)
     {
-        img.put(lattice, lattice_const,true);
-        std::cout << ga.MSE(img.getImage(),img.getImage(),image,5) << "\n";
+    	std::cout << fitness[i] << " " << n_fitness[i] << std::endl;
     }
-
-
+    std::cout <<fitness.size()<<std::endl;
     return 0;
 }

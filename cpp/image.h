@@ -3,6 +3,9 @@
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include <algorithm>
+#include <numeric>
+#include <random>
 
 class Image
 {
@@ -40,7 +43,7 @@ public:
 
 	void put(const std::pair<int,int> *lattice, int lattice_const, bool show=false, int wait_ms = 0)
 	{
-	    for(int i = 0; i < images.size(); i++)
+	    for(uint i = 0; i < images.size(); i++)
 	        if(image.type() == images[i].second.type() && images[i].second.rows <= image.rows and images[i].second.cols <= image.cols)
 	            images[i].second.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
 	    if(show)
