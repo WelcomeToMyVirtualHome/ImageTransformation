@@ -18,6 +18,19 @@ std::vector<Image> generation;
 std::pair<int,int> *lattice;
 int lattice_const;
 
+float avg ( std::vector<float> & v )
+{
+        float return_value = 0.0;
+        int n = v.size();
+       
+        for ( int i=0; i < n; i++)
+        {
+            return_value += v[i];
+        }
+       
+        return ( return_value / ((float)n));
+}
+
 void CreateLattice()
 {
     lattice_const = params[0]/params[1];
@@ -105,11 +118,66 @@ int main(int argc, char** argv)
     //     std::cout << ga.MSE(img.getImage(),img.getImage(),image,5) << "\n";
     // }
    
-    auto [fitness, n_fitness] = ga.Fitness(ga.getGeneration(), 1, image);
-    for (uint i = 0; i < fitness.size(); ++i)
+    // auto [fitness, n_fitness] = ga.Fitness(ga.getGeneration(), 1, image);
+    // for (uint i = 0; i < fitness.size(); ++i)
+    // {
+    // 	std::cout << fitness[i] << " " << n_fitness[i] << std::endl;
+    // }
+    // std::cout <<fitness.size()<<std::endl;
+
+    int iterations = 3;
+    int currIteration = 0;
+    Image bestImage;
+    std::vector<int> iterationArray;
+    std::vector<float> bestScore;
+    std::vector<float> avgScore;
+    int n_best = 2;
+    int generation_size = 100;
+    int n_parents = generation_size/2 - n_best;
+
+    while(true) 
     {
-    	std::cout << fitness[i] << " " << n_fitness[i] << std::endl;
+        if(currIteration == iterations)
+            break;
+
+        std::cout<<"Current iteration: " << currIteration << std::endl;
+        auto [fitness, n_fitness] = ga.Fitness(ga.getGeneration(), currIteration, image);
+
+        // output = draw(generation[max(fit.items(), key=operator.itemgetter(0))[0]])
+        bestImage = ga.selectBest(fitness, 1)[0];
+        bestImage.put(lattice, lattice_const, false, 0);
+        
+        // cv.imwrite("{:s}/out_{:d}.png".format(args.output,it), output)
+        std::cout << imwrite(std::string(argv[2])+"/out_"+std::to_string(currIteration)+".png",bestImage.getImage()) << std::endl;
+        
+        // best_score.append(max(fit.items(), key=operator.itemgetter(1))[1])
+        bestScore.push_back(*std::max_element(fitness.begin(),fitness.end()));      
+
+        // iterations.append(it)
+        iterationArray.push_back(currIteration);
+        
+        // average_score.append(sum(fit.values())/(len(fit.values())))
+        avgScore.push_back(avg(fitness));
+        
+        // // parents = [generation[weighted_random_choice(n_fit)] for i in range(n_parents)]
+        // parents = ga.selectParents(n_parents, n_fitness);
+
+        // // n_generation = new_generation(parents)
+        // n_generation = ga.newGeneration(parents);
+        
+        // // generation = n_generation + get_best(generation,n_fit)
+        // tmp_best = ga.selectBest(n_fitness,n_best)
+        // generation =  n_generation.insert( n_generation.end(), rmp_bets.begin(), tmp_best.end() );
+
+        //TODO
+        ga.newGeneration(n_fitness, n_parents, n_best);
+
+
+        // print(len(generation))
+        std::cout<<"Generatiion size: " << generation.size()<<std::endl;
+
+        ++currIteration;
     }
-    std::cout <<fitness.size()<<std::endl;
+
     return 0;
 }

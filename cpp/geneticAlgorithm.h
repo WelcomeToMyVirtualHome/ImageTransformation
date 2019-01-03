@@ -105,7 +105,10 @@ public:
 		return best;
 	}
 
-	void newGeneration(std::vector<Image> &generation) {}
+	void newGeneration(std::vector<float> &fitness, int n_parents, int n_best)
+	{
+		
+	}
 
 	const std::vector<Image> &getGeneration()
 	{
