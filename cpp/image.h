@@ -48,17 +48,33 @@ public:
 	            images[i].second.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
 	    if(show)
 	    {
-	        cv::imshow("image",image);
-	        cv::waitKey(wait_ms);
+	        Show(wait_ms);
 	    }
 	}
 
-	cv::Mat getImage() 
+	void Show(int wait_ms = 0)
+	{
+	    cv::imshow("img",image);
+        cv::waitKey(wait_ms);    
+	}
+
+	const cv::Mat &getImage() 
 	{ 
 		return image; 
+	}
+
+	void setFitness(float n_fitness)
+	{
+		fitness = n_fitness;
+	}
+
+	float getFitness()
+	{
+		return fitness;
 	}
 
 private:
 	std::vector<std::pair<int,cv::Mat> > images;
 	cv::Mat image;
+	float fitness = 0;
 };
