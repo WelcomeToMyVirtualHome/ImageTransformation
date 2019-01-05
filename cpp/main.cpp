@@ -9,19 +9,6 @@
 #include "geneticAlgorithm.h"
 #include "resources.h"
 
-float avg(std::vector<float> &v)
-{
-    float return_value = 0.0;
-    int n = v.size();
-   
-    for ( int i=0; i < n; i++)
-    {
-        return_value += v[i];
-    }
-   
-    return ( return_value / ((float)n));
-}
-
 int main(int argc, char** argv)
 {
     if(argc < 4)
@@ -31,20 +18,27 @@ int main(int argc, char** argv)
     }
 
     Resources *res = new Resources(argc,argv);    
-  
-    GeneticAlgorithm ga(res);
-    ga.CreateGeneration(10);
-  
-    ga.Fitness();   
-    for(auto img : ga.getGeneration())
-        printf("Fitness=%f\n", img.getFitness());
-    
-    std::vector<Image> parents = ga.SelectParents(1,2,0);
-    printf("Parents\n");
-    for(auto p : parents)
+    GeneticAlgorithm *ga = new GeneticAlgorithm(res);
+
+    int generationSize = 1000;
+    ga->CreateGeneration(generationSize);
+   
+    int i = 0;
+    int iMax = 1000;
+    while(true)
     {
-        p.Show(0);
-        printf("Fitness=%f\n", p.getFitness());
+        ga->Fitness();
+        printf("i=%d, AVG fit=%.3f\n",i,ga->AverageFitness());
+        if(i++ == iMax)
+            break;
+
+        ga->NewGeneration(ga->SelectParents(500,10,i));
+        
+        for(int i = 0; i < generationSize; i++)
+            if(i % 100 == 0)
+                ga->getGeneration()[i].Show(1);
     }
+    
+
     return 0;
 }

@@ -15,6 +15,7 @@ public:
 
 	int Load(int argc, char **argv)
 	{
+		printf("Loading...\n");
 	    char buffer[50];
 	    sprintf(buffer, "%s/%s", argv[1], INPUT_RESIZED);
 	    image = cv::imread(buffer, cv::IMREAD_UNCHANGED);
@@ -42,9 +43,9 @@ public:
 	            sprintf(buffer, "%s/%s", argv[1], ent->d_name);
 	            cv::Mat img = cv::imread(buffer, cv::IMREAD_UNCHANGED);
 	            if(img.data && std::string(ent->d_name).compare(std::string(INPUT_RESIZED)) != 0)
-	            {
-	                extracted.add(i++,img);
-	            }
+	                extracted.add(++i,img);
+	            else if(!img.data)
+	            	printf("No data in %s\n", ent->d_name);
 	        }
 	        closedir(dir);
 	    } 
@@ -66,26 +67,31 @@ public:
 	        }
 	        params_stream.close();
 	    }
-	    printf("Done\n");
+
+	    image_size = params[0];
+	    lattice_n = params[1];
+	    lattice_const = std::floor(float(image_size)/lattice_n);
+	    printf("Done...\n");
 	    return 0;
 	}
 
 	void CreateLattice()
 	{
-	    lattice_const = params[0]/params[1];
-	    lattice_n = params[1];
-	    lattice = new std::pair<int,int>[lattice_n*lattice_n];
+		printf("Create lattice...\n");
+	    lattice.reserve(lattice_n*lattice_n);
 	    for(int i = 0; i < lattice_n; i++)
 	        for(int j = 0; j < lattice_n; j++)
-	            lattice[i*lattice_n+j] = std::pair<int,int>(i*lattice_const,j*lattice_const);
+	            lattice.push_back(std::pair<int,int>(i*lattice_const,j*lattice_const));
+	    printf("...Done\n");
 	}
 
 	cv::Mat image;
 	Image extracted;
 	
-	std::pair<int,int> *lattice;
+	std::vector<std::pair<int,int> >lattice;
 	int lattice_const;
 	int lattice_n;
+	int image_size;
 private:
 	std::vector<int> params;
 	const char* INPUT_RESIZED = "input_resized.png";

@@ -20,7 +20,7 @@ public:
 		image = p_image.clone();
 	}
 	
-	Image(const Image &img, cv::Mat p_image)
+	Image(cv::Mat p_image, const Image &img)
 	{ 
 		image = p_image.clone();
 		images = img.images;
@@ -36,14 +36,12 @@ public:
 		std::random_shuffle(images.begin(), images.end()); 
 	}
 	
-	std::vector<std::pair<int,cv::Mat> > getImages()
-	{ 
-		return images; 
-	}
-
-	void put(const std::pair<int,int> *lattice, int lattice_const, bool show=false, int wait_ms = 0)
+	void put(const std::vector<std::pair<int,int> > &lattice, int lattice_const, bool show=false, int wait_ms = 0)
 	{
-	    for(uint i = 0; i < images.size(); i++)
+		if(lattice.size() != images.size())
+			printf("Wrong sizes\n");
+		
+		for(uint i = 0; i < images.size(); i++)
 	        if(image.type() == images[i].second.type() && images[i].second.rows <= image.rows and images[i].second.cols <= image.cols)
 	            images[i].second.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
 	    if(show)
@@ -58,7 +56,14 @@ public:
         cv::waitKey(wait_ms);    
 	}
 
-	const cv::Mat &getImage() 
+	void printOrder()
+	{
+		for(auto img : images)
+			printf("i=%d\n",img.first);
+		printf("\n");
+	}
+
+	cv::Mat const &getImage() const
 	{ 
 		return image; 
 	}
@@ -71,6 +76,16 @@ public:
 	float getFitness()
 	{
 		return fitness;
+	}
+
+	void setImages(std::vector<std::pair<int,cv::Mat> > n_images)
+	{
+		images = n_images;
+	}
+
+	std::vector<std::pair<int,cv::Mat> > const &getImages() const
+	{ 
+		return images; 
 	}
 
 private:
