@@ -40,7 +40,7 @@ public:
 	{
 		if(lattice.size() != images.size())
 			printf("Wrong sizes\n");
-		
+
 		for(uint i = 0; i < images.size(); i++)
 	        if(image.type() == images[i].second.type() && images[i].second.rows <= image.rows and images[i].second.cols <= image.cols)
 	            images[i].second.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
@@ -73,7 +73,7 @@ public:
 		fitness = n_fitness;
 	}
 
-	float getFitness()
+	double getFitness()
 	{
 		return fitness;
 	}
@@ -91,5 +91,5 @@ public:
 private:
 	std::vector<std::pair<int,cv::Mat> > images;
 	cv::Mat image;
-	float fitness = 0;
+	double fitness = 0;
 };

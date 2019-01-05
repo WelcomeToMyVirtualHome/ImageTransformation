@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         if(i++ == iMax)
             break;
 
-        ga->NewGeneration(ga->SelectParents(500,10,i));
+        ga->NewGeneration(ga->SelectParents(100,20,i));
         
         for(int i = 0; i < generationSize; i++)
             if(i % 100 == 0)

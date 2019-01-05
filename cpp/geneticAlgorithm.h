@@ -53,7 +53,7 @@ public:
 	void Fitness() 
 	{
 		for(auto it = begin(generation); it != end(generation); ++it)
-       	  	it->setFitness(MSE(it->getImage()));
+       	  	it->setFitness(1./MSE(it->getImage()));
 	}
 
 	float AverageFitness()
@@ -118,6 +118,10 @@ public:
 			
 			Image child(res->image,res->extracted);
 			Order1Crossover(child,parent1,parent2);
+
+			if(drand48() < 0.05)
+				SingleSwapMutation(child);
+			
 			child.put(res->lattice, res->lattice_const);
 
 			newGeneration[iter] = child;
@@ -160,9 +164,20 @@ public:
 		child.setImages(images);
 	}
 
-	void Mutation(Image &child)
+	void SingleSwapMutation(Image &child)
 	{
+		int nImages = res->extracted.getImages().size();
+		
+		int index1 = int(drand48()*nImages);
+		int index2 = int(drand48()*nImages);
+		while(index1 == index2)
+			index2 = int(drand48()*nImages);
 
+		std::vector<std::pair<int,cv::Mat> > images = child.getImages();
+		auto var = images[index1];
+		images[index1] = images[index2];
+		images[index2] = var;
+		child.setImages(images);
 	}
 
 	void SortImages(std::vector<std::pair<int,cv::Mat> > &toSort) 
