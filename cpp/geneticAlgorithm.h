@@ -47,7 +47,7 @@ public:
 
 	float FitnessFunc(float score, int i)
 	{
-		return score*((i+1.0)/1000.0) + 1.1*i;
+		return score + 1.001*i;
 	}
 
 	void Fitness() 
@@ -81,7 +81,7 @@ public:
 		return 0;
 	}
 
-	std::vector<Image> SelectParents(int nSelect, int nBest, int iter)
+	std::vector<Image> SelectParents(int nSelect, int nBest, int iter, bool showBest = false)
 	{	
 		std::vector<Image> parents(nSelect + nBest);
 		std::vector<float> n_fitness(generation.size());
@@ -94,7 +94,9 @@ public:
 		std::vector<size_t> bestIndexes = SortIndexes(n_fitness);
 		for(int i = 0; i < nBest; i++)
 			parents[nSelect + i] = generation[bestIndexes[i]];
-		
+
+		if(showBest)
+			parents[nSelect+nBest-1].Show(1);
 		return parents;
 	}
 

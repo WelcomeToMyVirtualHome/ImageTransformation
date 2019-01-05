@@ -24,19 +24,16 @@ int main(int argc, char** argv)
     ga->CreateGeneration(generationSize);
    
     int i = 0;
-    int iMax = 1000;
+    int iMax = 1500;
     while(true)
     {
         ga->Fitness();
-        printf("i=%d, AVG fit=%.3f\n",i,ga->AverageFitness());
+        printf("i=%d, AVG fit=%.6f\n",i,ga->AverageFitness());
         if(i++ == iMax)
             break;
-
-        ga->NewGeneration(ga->SelectParents(100,20,i));
         
-        for(int i = 0; i < generationSize; i++)
-            if(i % 100 == 0)
-                ga->getGeneration()[i].Show(1);
+        ga->NewGeneration(ga->SelectParents(500,5,i,true));
+        
     }
     
 
