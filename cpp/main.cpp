@@ -25,6 +25,7 @@ int main(int argc, char** argv)
    
     int i = 0;
     int iMax = 1500;
+
     while(true)
     {
         ga->Fitness();
@@ -32,8 +33,7 @@ int main(int argc, char** argv)
         if(i++ == iMax)
             break;
         
-        ga->NewGeneration(ga->SelectParents(500,5,i,true));
-        
+        ga->NewGeneration(ga->SelectParents(200,5,i,true));  
     }
     
 

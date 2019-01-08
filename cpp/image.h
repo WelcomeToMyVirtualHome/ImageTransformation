@@ -78,6 +78,11 @@ public:
 		return fitness;
 	}
 
+	void setImage(int i, std::pair<int,cv::Mat> image)
+	{
+		images[i] = image;
+	}
+
 	void setImages(std::vector<std::pair<int,cv::Mat> > n_images)
 	{
 		images = n_images;

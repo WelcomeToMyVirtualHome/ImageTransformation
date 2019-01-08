@@ -3,6 +3,9 @@
 #include "image.h"
 #include "resources.h"
 
+#include <thread>
+#include <chrono>
+
 class GeneticAlgorithm
 {
 public:
@@ -25,7 +28,7 @@ public:
 	    {
 	    	Image newImage(res->image, res->extracted);
 	        newImage.shuffle();
-	        newImage.put(res->lattice, res->lattice_const);
+	        newImage.put(res->lattice, res->latticeConst);
 	        generation[i] = newImage;
 	    }
 	}
@@ -33,21 +36,21 @@ public:
 	float MSE(const cv::Mat &imageToCompare)
 	{
 		float mse = 0;
-		for(int i = 0; i < res->lattice_n; i++)
+		for(int i = 0; i < res->latticeN; i++)
 		{
-			for(int j = 0; j < res->lattice_n; j++)
+			for(int j = 0; j < res->latticeN; j++)
 			{
-				auto m1 = cv::mean(imageToCompare(cv::Rect(i*res->lattice_const, j*res->lattice_const, res->lattice_const, res->lattice_const)));
-				auto m2 = cv::mean(res->image(cv::Rect(i*res->lattice_const, j*res->lattice_const, res->lattice_const, res->lattice_const)));
+				auto m1 = cv::mean(imageToCompare(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
+				auto m2 = cv::mean(res->image(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
 				mse += (m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2])*(m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2]);
 			}
 		}	
-		return mse/res->lattice_n/res->lattice_n;
+		return mse/res->latticeN/res->latticeN;
 	}
 
 	float FitnessFunc(float score, int i)
 	{
-		return score + 1.001*i;
+		return score/100 + i * 0.002;
 	}
 
 	void Fitness() 
@@ -107,7 +110,7 @@ public:
 		uint iter = 0;
 		while(true)
 		{
-			if(iter == generationSize)
+			if(iter >= generationSize)
 				break;
 
 			int parent1Index = int(drand48()*nParents);
@@ -118,23 +121,28 @@ public:
 			Image parent1 = parents[parent1Index];
 			Image parent2 = parents[parent2Index];
 			
-			Image child(res->image,res->extracted);
-			Order1Crossover(child,parent1,parent2);
+			Image child1(res->image,res->extracted);
+			Image child2(res->image,res->extracted);
+
+			CycleCrossover(child1,child2,parent1,parent2);
 
 			if(drand48() < 0.05)
-				SingleSwapMutation(child);
+				SingleSwapMutation(child1);
+			if(drand48() < 0.05)
+				SingleSwapMutation(child2);
 			
-			child.put(res->lattice, res->lattice_const);
-
-			newGeneration[iter] = child;
-			iter++;
+			child1.put(res->lattice, res->latticeConst);
+			child2.put(res->lattice, res->latticeConst);
+			
+			newGeneration[iter++] = child1;
+			newGeneration[iter++] = child2;
 		}
 		generation = newGeneration;
 	}
 
 	void Order1Crossover(Image &child, const Image &parent1, const Image &parent2)
 	{
-		int nImages = res->extracted.getImages().size();
+		int nImages = res->nImages;
 	
 		int crosspoint1 = int(drand48()*nImages);
 		int crosspoint2 = int(drand48()*nImages);
@@ -166,9 +174,48 @@ public:
 		child.setImages(images);
 	}
 
+	void CycleCrossover(Image &child1, Image &child2, Image parent1, Image parent2)
+	{
+		int nImages = res->nImages;
+
+		std::vector<int> p1(nImages);
+		std::vector<int> p2(nImages);
+		for(int i = 0; i < nImages; i++)
+		{
+			p1[i] = parent1.getImages()[i].first;
+			p2[i] = parent2.getImages()[i].first;
+		}
+		
+		const auto find = [&](const auto &self, const auto &p1, const auto &p2, int current, int startIndex, auto &fromP2) -> void
+	    {
+	        auto it = std::find(p2.begin(), p2.end(), current);
+		    int currentIndex = it - p2.begin();
+		    fromP2.push_back(currentIndex);
+		    if(p1[currentIndex] == p1[startIndex]);
+		   	else if(it != p2.end()) 
+		    	self(self,p1,p2,p1[currentIndex],startIndex,fromP2); 
+	    };
+		
+		std::vector<int> indexFromParent;
+		indexFromParent.reserve(nImages);
+		find(find,p1,p2,p1[0],0,indexFromParent);
+		
+		child1.setImages(parent2.getImages());
+		for(auto p : indexFromParent)
+			child1.setImage(p,parent1.getImages()[p]);
+		
+		indexFromParent.clear();
+		indexFromParent.reserve(nImages);
+		find(find,p2,p1,p2[0],0,indexFromParent);
+		
+		child2.setImages(parent1.getImages());
+		for(auto p : indexFromParent)
+			child2.setImage(p, parent2.getImages()[p]);
+	}
+
 	void SingleSwapMutation(Image &child)
 	{
-		int nImages = res->extracted.getImages().size();
+		int nImages = res->nImages;
 		
 		int index1 = int(drand48()*nImages);
 		int index2 = int(drand48()*nImages);

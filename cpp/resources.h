@@ -36,14 +36,13 @@ public:
 	    printf("Reading from %s\n", argv[1]);
 	    if((dir = opendir(argv[1])) != NULL)
 	    {
-	        int i = 0;
 	        while((ent = readdir(dir)) != NULL)
 	        {
 	            printf("%s\n", ent->d_name);
 	            sprintf(buffer, "%s/%s", argv[1], ent->d_name);
 	            cv::Mat img = cv::imread(buffer, cv::IMREAD_UNCHANGED);
 	            if(img.data && std::string(ent->d_name).compare(std::string(INPUT_RESIZED)) != 0)
-	                extracted.add(++i,img);
+	                extracted.add(++nImages,img);
 	            else if(!img.data)
 	            	printf("No data in %s\n", ent->d_name);
 	        }
@@ -56,21 +55,21 @@ public:
 	    }
 
 	    std::string line;
-	    std::ifstream params_stream;
-	    params_stream.open(argv[3]);
-	    if (params_stream.is_open())
+	    std::ifstream paramsStream;
+	    paramsStream.open(argv[3]);
+	    if (paramsStream.is_open())
 	    {
-	        while(std::getline(params_stream,line))
+	        while(std::getline(paramsStream,line))
 	        {
 	            int p = atoi(line.c_str());
 	            params.push_back(p);
 	        }
-	        params_stream.close();
+	        paramsStream.close();
 	    }
 
-	    image_size = params[0];
-	    lattice_n = params[1];
-	    lattice_const = std::floor(float(image_size)/lattice_n);
+	    imageSize = params[0];
+	    latticeN = params[1];
+	    latticeConst = std::floor(float(imageSize)/latticeN);
 	    printf("Done...\n");
 	    return 0;
 	}
@@ -78,10 +77,10 @@ public:
 	void CreateLattice()
 	{
 		printf("Create lattice...\n");
-	    lattice.reserve(lattice_n*lattice_n);
-	    for(int i = 0; i < lattice_n; i++)
-	        for(int j = 0; j < lattice_n; j++)
-	            lattice.push_back(std::pair<int,int>(i*lattice_const,j*lattice_const));
+	    lattice.reserve(latticeN*latticeN);
+	    for(int i = 0; i < latticeN; i++)
+	        for(int j = 0; j < latticeN; j++)
+	            lattice.push_back(std::pair<int,int>(i*latticeConst,j*latticeConst));
 	    printf("...Done\n");
 	}
 
@@ -89,9 +88,10 @@ public:
 	Image extracted;
 	
 	std::vector<std::pair<int,int> >lattice;
-	int lattice_const;
-	int lattice_n;
-	int image_size;
+	int latticeConst = 0;
+	int latticeN = 0;
+	int imageSize = 0;
+	int nImages = 0;
 private:
 	std::vector<int> params;
 	const char* INPUT_RESIZED = "input_resized.png";
