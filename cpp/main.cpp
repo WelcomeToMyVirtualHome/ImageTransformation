@@ -22,9 +22,10 @@ int main(int argc, char** argv)
 
     int generationSize = 1000;
     ga->CreateGeneration(generationSize);
-   
+    ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP);
     int i = 0;
     int iMax = 1500;
+
 
     while(true)
     {

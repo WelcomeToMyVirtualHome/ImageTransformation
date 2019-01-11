@@ -9,6 +9,18 @@
 class GeneticAlgorithm
 {
 public:
+
+	enum CrossoverFlags {
+		CYCLE = 0,
+		ORDER_1 = 1,
+	};
+	
+	enum MutationFlags {
+	    SINGLE_SWAP = 0,
+	    INVERSION = 1,
+	    SCRAMBLE = 2, 
+	};
+
 	GeneticAlgorithm(Resources *res) 
 	{
 		this->res = res;
@@ -31,6 +43,21 @@ public:
 	        newImage.put(res->lattice, res->latticeConst);
 	        generation[i] = newImage;
 	    }
+	}
+
+	void SetOperators(CrossoverFlags crossoverFlag, MutationFlags mutationFlag)
+	{
+		if(crossoverFlag == CrossoverFlags::ORDER_1)
+			crossover = &GeneticAlgorithm::Order1Crossover;
+		else if(crossoverFlag == CrossoverFlags::CYCLE)
+			crossover = &GeneticAlgorithm::CycleCrossover;
+	
+		if(mutationFlag == MutationFlags::SINGLE_SWAP)
+			mutation = &GeneticAlgorithm::SingleSwapMutation;
+		else if(mutationFlag == MutationFlags::INVERSION)
+			mutation = &GeneticAlgorithm::InversionMutation;
+		else if(mutationFlag == MutationFlags::SCRAMBLE)
+			mutation = &GeneticAlgorithm::ScrambleMutation;
 	}
 
 	float MSE(const cv::Mat &imageToCompare)
@@ -108,6 +135,7 @@ public:
 		std::vector<Image> newGeneration(generationSize);
 		int nParents = parents.size();
 		uint iter = 0;
+		const float pMutation = 0.05;
 		while(true)
 		{
 			if(iter >= generationSize)
@@ -124,12 +152,12 @@ public:
 			Image child1(res->image,res->extracted);
 			Image child2(res->image,res->extracted);
 
-			CycleCrossover(child1,child2,parent1,parent2);
+			(this->*crossover)(child1,child2,parent1,parent2);
 
-			if(drand48() < 0.05)
-				SingleSwapMutation(child1);
-			if(drand48() < 0.05)
-				SingleSwapMutation(child2);
+			if(drand48() < pMutation)
+				(this->*mutation)(child1);
+			if(drand48() < pMutation)
+				(this->*mutation)(child2);
 			
 			child1.put(res->lattice, res->latticeConst);
 			child2.put(res->lattice, res->latticeConst);
@@ -140,7 +168,7 @@ public:
 		generation = newGeneration;
 	}
 
-	void Order1Crossover(Image &child, const Image &parent1, const Image &parent2)
+	void Order1Crossover(Image &child, Image &child2, const Image &parent1, const Image &parent2)
 	{
 		int nImages = res->nImages;
 	
@@ -174,7 +202,7 @@ public:
 		child.setImages(images);
 	}
 
-	void CycleCrossover(Image &child1, Image &child2, Image parent1, Image parent2)
+	void CycleCrossover(Image &child1, Image &child2, const Image &parent1, const  Image &parent2)
 	{
 		int nImages = res->nImages;
 
@@ -229,6 +257,34 @@ public:
 		child.setImages(images);
 	}
 
+	void InversionMutation(Image &child)
+	{
+		int nImages = res->nImages;
+		
+		int index1 = int(drand48()*nImages);
+		int index2 = int(drand48()*nImages);
+		while(index1 == index2)
+			index2 = int(drand48()*nImages);
+
+		int min = std::min(index1,index2);
+		int max = std::max(index1,index2);
+		std::reverse(child.getImages().begin() + min, child.getImages().begin() + max);
+	}
+
+	void ScrambleMutation(Image &child)
+	{
+		int nImages = res->nImages;
+		
+		int index1 = int(drand48()*nImages);
+		int index2 = int(drand48()*nImages);
+		while(index1 == index2)
+			index2 = int(drand48()*nImages);
+
+		int min = std::min(index1,index2);
+		int max = std::max(index1,index2);
+		child.shuffle(false,min,max);
+	}
+
 	void SortImages(std::vector<std::pair<int,cv::Mat> > &toSort) 
 	{
 		sort(std::begin(toSort), std::end(toSort),[&](const auto &lhs, const auto &rhs) {return lhs.first < rhs.first;} );
@@ -269,4 +325,6 @@ private:
 	std::vector<Image> generation;
 	Resources *res;
 	uint generationSize = 0;
+	void (GeneticAlgorithm::*mutation)(Image&);
+	void (GeneticAlgorithm::*crossover)(Image&, Image&, const Image&, const Image&);
 };

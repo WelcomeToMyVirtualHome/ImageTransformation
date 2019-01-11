@@ -31,9 +31,12 @@ public:
 		images.push_back(std::pair<int,cv::Mat>(index,img)); 
 	}
 
-	void shuffle() 
+	void shuffle(bool all = true, int begin = 0, int end = 0) 
 	{ 
-		std::random_shuffle(images.begin(), images.end()); 
+		if(all)
+			std::random_shuffle(images.begin(), images.end()); 
+		else 
+			std::random_shuffle(images.begin() + begin, images.begin() + end);
 	}
 	
 	void put(const std::vector<std::pair<int,int> > &lattice, int lattice_const, bool show=false, int wait_ms = 0)
@@ -54,6 +57,17 @@ public:
 	{
 	    cv::imshow("img",image);
         cv::waitKey(wait_ms);    
+	}
+
+	void RotateClockwise(int i)
+	{
+		cv::transpose(images[i].second, images[i].second);	
+		cv::flip(images[i].second, images[i].second,cv::RotateFlags::ROTATE_90_CLOCKWISE);
+	}
+
+	void Color(int i)
+	{
+
 	}
 
 	void printOrder()
@@ -89,6 +103,11 @@ public:
 	}
 
 	std::vector<std::pair<int,cv::Mat> > const &getImages() const
+	{ 
+		return images; 
+	}
+
+	std::vector<std::pair<int,cv::Mat> > &getImages()
 	{ 
 		return images; 
 	}
