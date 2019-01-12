@@ -21,22 +21,21 @@ int main(int argc, char** argv)
     GeneticAlgorithm *ga = new GeneticAlgorithm(res);
 
     int generationSize = 1000;
-    ga->CreateGeneration(generationSize);
-    ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP);
     int i = 0;
     int iMax = 1500;
-
-
+    
+    ga->CreateGeneration(generationSize);
+    ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP);
+    
     while(true)
     {
-        ga->Fitness();
-        printf("i=%d, AVG fit=%.6f\n",i,ga->AverageFitness());
         if(i++ == iMax)
             break;
-        
+
+        ga->writeToFile(i);
+        ga->Fitness();
         ga->NewGeneration(ga->SelectParents(200,5,i,true));  
     }
     
-
     return 0;
 }

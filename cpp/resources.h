@@ -31,6 +31,9 @@ public:
 	    }
 	    cv::imshow("Image",image);
 	    cv::waitKey(0);
+
+	    outputPath = argv[2];
+
 	    DIR *dir;
 	    struct dirent *ent;
 	    printf("Reading from %s\n", argv[1]);
@@ -83,6 +86,8 @@ public:
 	            lattice.push_back(std::pair<int,int>(i*latticeConst,j*latticeConst));
 	    printf("...Done\n");
 	}
+	
+	char *outputPath;
 
 	cv::Mat image;
 	Image extracted;

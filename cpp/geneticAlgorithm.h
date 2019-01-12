@@ -1,10 +1,10 @@
 #pragma once
+#include <thread>
+#include <chrono>
+#include <fstream>
 
 #include "image.h"
 #include "resources.h"
-
-#include <thread>
-#include <chrono>
 
 class GeneticAlgorithm
 {
@@ -24,12 +24,13 @@ public:
 	GeneticAlgorithm(Resources *res) 
 	{
 		this->res = res;
+		output.open(OUT_FILE,std::ios::trunc);
 		srand48(time(NULL));
 	} 
 
 	~GeneticAlgorithm()
 	{
-
+		output.close();
 	}
 
 	void CreateGeneration(int generationSize)
@@ -60,74 +61,10 @@ public:
 			mutation = &GeneticAlgorithm::ScrambleMutation;
 	}
 
-	float MSE(const cv::Mat &imageToCompare)
-	{
-		float mse = 0;
-		for(int i = 0; i < res->latticeN; i++)
-		{
-			for(int j = 0; j < res->latticeN; j++)
-			{
-				auto m1 = cv::mean(imageToCompare(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
-				auto m2 = cv::mean(res->image(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
-				mse += (m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2])*(m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2]);
-			}
-		}	
-		return mse/res->latticeN/res->latticeN;
-	}
-
-	float FitnessFunc(float score, int i)
-	{
-		return score/100 + i * 0.002;
-	}
-
 	void Fitness() 
 	{
 		for(auto it = begin(generation); it != end(generation); ++it)
        	  	it->setFitness(1./MSE(it->getImage()));
-	}
-
-	float AverageFitness()
-	{
-		float sum = 0;
-		for(auto img : generation)
-			sum += img.getFitness();
-		return sum/generationSize;
-	}
-	
-	int WeightedRandomChoice(std::vector<float> n_fitness)
-	{
-		float max = std::accumulate(n_fitness.begin(), n_fitness.end(), 0.0f);
-		std::random_device rd;     // only used once to initialise (seed) engine
-		std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-		std::uniform_real_distribution<float> uni(0,max); // guaranteed unbiased
-		float pick = uni(rng);
-		float current = 0;
-		for (uint i = 0; i < n_fitness.size(); ++i)
-		{
-			current += n_fitness[i];
-			if(current > pick)
-				return i;
-		}
-		return 0;
-	}
-
-	std::vector<Image> SelectParents(int nSelect, int nBest, int iter, bool showBest = false)
-	{	
-		std::vector<Image> parents(nSelect + nBest);
-		std::vector<float> n_fitness(generation.size());
-		for(uint i = 0; i < generation.size(); i++)
-			n_fitness[i] = FitnessFunc(generation[i].getFitness(),iter);
-
-		for(int i = 0; i < nSelect; ++i)
-			parents[i] = generation[WeightedRandomChoice(n_fitness)];
-
-		std::vector<size_t> bestIndexes = SortIndexes(n_fitness);
-		for(int i = 0; i < nBest; i++)
-			parents[nSelect + i] = generation[bestIndexes[i]];
-
-		if(showBest)
-			parents[nSelect+nBest-1].Show(1);
-		return parents;
 	}
 
 	void NewGeneration(std::vector<Image> parents)
@@ -166,6 +103,104 @@ public:
 			newGeneration[iter++] = child2;
 		}
 		generation = newGeneration;
+	}
+
+	std::vector<Image> SelectParents(int nSelect, int nBest, int iter, bool showBest = false)
+	{	
+		std::vector<Image> parents(nSelect + nBest);
+		std::vector<float> n_fitness(generation.size());
+		for(uint i = 0; i < generation.size(); i++)
+			n_fitness[i] = FitnessFunc(generation[i].getFitness(),iter);
+
+		for(int i = 0; i < nSelect; ++i)
+			parents[i] = generation[WeightedRandomChoice(n_fitness)];
+
+		std::vector<size_t> bestIndexes = SortIndexes(n_fitness);
+		for(int i = 0; i < nBest; i++)
+			parents[nSelect + i] = generation[bestIndexes[i]];
+
+		best = parents[nSelect+nBest-1];
+
+		if(showBest)
+			best.Show(1);
+
+		char buffer[50];
+		sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
+		printf("%s",buffer);
+		cv::imwrite(std::string(buffer),best.getImage());
+		return parents;
+	}
+
+	void writeToFile(int generation)
+	{
+		float avg = AverageFitness();
+		printf("i=%d, AVG fit=%.6f, best fit=%.6f\n",generation,avg,best.getFitness());
+		output << generation << " " << avg << " " << best.getFitness() <<"\n";
+	}
+
+	const std::vector<Image> &getGeneration() const
+	{
+		return generation;
+	}
+
+	std::vector<Image> &getGeneration()
+	{
+		return generation;
+	}
+
+private:
+	std::vector<Image> generation;
+	Resources *res;
+	uint generationSize = 0;
+	void (GeneticAlgorithm::*mutation)(Image&);
+	void (GeneticAlgorithm::*crossover)(Image&, Image&, const Image&, const Image&);
+	const char* OUT_FILE = "fitnessHistory.dat";
+	std::ofstream output;
+	Image best;
+	
+	float MSE(const cv::Mat &imageToCompare)
+	{
+		float mse = 0;
+		for(int i = 0; i < res->latticeN; i++)
+		{
+			for(int j = 0; j < res->latticeN; j++)
+			{
+				auto m1 = cv::mean(imageToCompare(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
+				auto m2 = cv::mean(res->image(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst)));
+				mse += (m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2])*(m1[0] + m1[1] + m1[2] - m2[0] - m2[1] - m2[2]);
+			}
+		}	
+		return mse/res->latticeN/res->latticeN;
+	}
+
+	float FitnessFunc(float score, int i)
+	{
+		return score/100 + i * 0.002;
+	}
+
+	float AverageFitness()
+	{
+		float sum = 0;
+		for(auto img : generation)
+			sum += img.getFitness();
+		return sum/generationSize;
+	}
+	
+	int WeightedRandomChoice(std::vector<float> n_fitness)
+	{
+		float max = std::accumulate(n_fitness.begin(), n_fitness.end(), 0.0f);
+		std::random_device rd;     // only used once to initialise (seed) engine
+		std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+		std::uniform_real_distribution<float> uni(0,max); // guaranteed unbiased
+		float pick = uni(rng);
+		float current = 0;
+		for (uint i = 0; i < n_fitness.size(); ++i)
+		{
+			current += n_fitness[i];
+			if(current > pick)
+				return i;
+		}
+		return 0;
 	}
 
 	void Order1Crossover(Image &child, Image &child2, const Image &parent1, const Image &parent2)
@@ -300,31 +335,12 @@ public:
 					++it;
 	}
 	
-	const std::vector<Image> &getGeneration() const
-	{
-		return generation;
-	}
-
-	std::vector<Image> &getGeneration()
-	{
-		return generation;
-	}
-
 	template <typename T>
 	std::vector<size_t> SortIndexes(const std::vector<T> &v) 
 	{
-		// initialize original index locations
 		std::vector<size_t> idx(v.size());
 		std::iota(idx.begin(), idx.end(), 0);
-		// sort indexes based on comparing values in v
-		sort(idx.begin(), idx.end(),[&v](size_t i1, size_t i2) {return v[i1] > v[i2];}); /* < or > */
+		sort(idx.begin(), idx.end(),[&v](size_t i1, size_t i2) {return v[i1] > v[i2];});
 		return idx;
 	}
-
-private:
-	std::vector<Image> generation;
-	Resources *res;
-	uint generationSize = 0;
-	void (GeneticAlgorithm::*mutation)(Image&);
-	void (GeneticAlgorithm::*crossover)(Image&, Image&, const Image&, const Image&);
 };
