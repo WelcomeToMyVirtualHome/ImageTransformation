@@ -30,8 +30,7 @@ public:
 	        return 0;
 	    }
 	    cv::imshow("Image",image);
-	    cv::waitKey(0);
-
+	   
 	    outputPath = argv[2];
 
 	    DIR *dir;

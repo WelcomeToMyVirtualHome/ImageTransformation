@@ -1,7 +1,7 @@
 #pragma once
 #include <thread>
 #include <chrono>
-#include <fstream>
+#include <cstdio>
 
 #include "image.h"
 #include "resources.h"
@@ -24,13 +24,15 @@ public:
 	GeneticAlgorithm(Resources *res) 
 	{
 		this->res = res;
-		output.open(OUT_FILE,std::ios::trunc);
+		char buffer[50];
+		sprintf(buffer,"%s/fitnessHistory.dat",res->outputPath);
+		output = fopen(buffer,"w");
 		srand48(time(NULL));
 	} 
 
 	~GeneticAlgorithm()
 	{
-		output.close();
+		fclose(output);
 	}
 
 	void CreateGeneration(int generationSize)
@@ -44,6 +46,7 @@ public:
 	        newImage.put(res->lattice, res->latticeConst);
 	        generation[i] = newImage;
 	    }
+	    best = generation[0];
 	}
 
 	void SetOperators(CrossoverFlags crossoverFlag, MutationFlags mutationFlag)
@@ -121,21 +124,24 @@ public:
 
 		best = parents[nSelect+nBest-1];
 
-		if(showBest)
-			best.Show(1);
-
-		char buffer[50];
-		sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
-		printf("%s",buffer);
-		cv::imwrite(std::string(buffer),best.getImage());
 		return parents;
 	}
 
 	void writeToFile(int generation)
 	{
 		float avg = AverageFitness();
-		printf("i=%d, AVG fit=%.6f, best fit=%.6f\n",generation,avg,best.getFitness());
-		output << generation << " " << avg << " " << best.getFitness() <<"\n";
+		printf("i=%d, AVG fit=%.6f, best fit=%.6f\n",generation,avg,best.getFitness());	
+		fprintf(output,"%d %f %f\n",generation,avg,best.getFitness());
+	}
+
+	void writeImages(int iter, bool show = false)
+	{
+		if(show)
+			best.Show(1);
+
+		char buffer[50];
+		sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
+		cv::imwrite(std::string(buffer),best.getImage());
 	}
 
 	const std::vector<Image> &getGeneration() const
@@ -154,8 +160,7 @@ private:
 	uint generationSize = 0;
 	void (GeneticAlgorithm::*mutation)(Image&);
 	void (GeneticAlgorithm::*crossover)(Image&, Image&, const Image&, const Image&);
-	const char* OUT_FILE = "fitnessHistory.dat";
-	std::ofstream output;
+	FILE *output;
 	Image best;
 	
 	float MSE(const cv::Mat &imageToCompare)
