@@ -164,7 +164,7 @@ try:
 	while True:
 	    it += 1
 	    print("i={:d}".format(it))
-	    (fit, n_fit) = fitness(generation,i)
+	    (fit, n_fit) = fitness(generation_size,i)
 	    output = draw(generation[max(fit.items(), key=operator.itemgetter(0))[0]])
 	    cv.imwrite("{:s}/out_{:d}.png".format(args.output,it), output)   
 	    best_score.append(max(fit.items(), key=operator.itemgetter(1))[1])
