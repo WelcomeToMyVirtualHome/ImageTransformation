@@ -21,6 +21,11 @@ public:
 	    SCRAMBLE = 2, 
 	};
 
+	enum GoalFunctionFlags {
+	    MSE = 0,
+	    MSSIM = 1,
+	};
+
 	GeneticAlgorithm(Resources *res) 
 	{
 		this->res = res;
@@ -49,7 +54,7 @@ public:
 	    best = generation[0];
 	}
 
-	void SetOperators(CrossoverFlags crossoverFlag, MutationFlags mutationFlag)
+	void SetOperators(CrossoverFlags crossoverFlag, MutationFlags mutationFlag, GoalFunctionFlags goalFunctionFlag)
 	{
 		if(crossoverFlag == CrossoverFlags::ORDER_1)
 			crossover = &GeneticAlgorithm::Order1Crossover;
@@ -62,13 +67,17 @@ public:
 			mutation = &GeneticAlgorithm::InversionMutation;
 		else if(mutationFlag == MutationFlags::SCRAMBLE)
 			mutation = &GeneticAlgorithm::ScrambleMutation;
+
+		if(goalFunctionFlag == GoalFunctionFlags::MSE)
+			goalFunction = &GeneticAlgorithm::getMSE;
+		else if(goalFunctionFlag == GoalFunctionFlags::MSSIM)
+			goalFunction = &GeneticAlgorithm::getMSSIM;
 	}
 
 	void Fitness() 
 	{
 		for(auto it = begin(generation); it != end(generation); ++it){
-			it->setFitness(getMSSIM(it->getImage(), res->image));
-       	  	// it->setFitness(MSE(it->getImage()));
+			it->setFitness((this->*goalFunction)(it->getImage(), res->image));
 		}
 	}
 
@@ -183,6 +192,7 @@ private:
 	uint generationSize = 0;
 	void (GeneticAlgorithm::*mutation)(Image&);
 	void (GeneticAlgorithm::*crossover)(Image&, Image&, const Image&, const Image&);
+	float (GeneticAlgorithm::*goalFunction)(const cv::Mat&, const cv::Mat&);
 	FILE *output;
 	Image best;
 
@@ -236,11 +246,10 @@ private:
 		 cv::divide(t3, t1, ssim_map);      // ssim_map =  t3./t1;
 
 		 cv::Scalar mssim = cv::mean( ssim_map ); // mssim = average of ssim map
-		 // std::cout<<mssim[0]+mssim[1]+mssim[2]+mssim[3];
 		 return mssim[0]+mssim[1]+mssim[2]+mssim[3];
 	}
 	
-	float MSE(const cv::Mat &imageToCompare)
+	float getMSE(const cv::Mat &imageToCompare, const cv::Mat &image)
 	{
 		float mse = 0;
 		for(int i = 0; i < res->latticeN; i++)

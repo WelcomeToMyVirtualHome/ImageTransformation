@@ -25,7 +25,7 @@ int main(int argc, char** argv)
     int iMax = 500;
     
     ga->CreateGeneration(generationSize);
-    ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP);
+    ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP, GeneticAlgorithm::GoalFunctionFlags::MSSIM);
     
     while(true)
     {
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
         ga->writeToFile(i);
         ga->writeImages(i,20,true);
         ga->NewGeneration(ga->SelectParents(200,5,i),0.08);  
-        
+
         if(++i == iMax)
             break;
     }
