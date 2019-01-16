@@ -22,20 +22,20 @@ int main(int argc, char** argv)
 
     int generationSize = 1000;
     int i = 0;
-    int iMax = 300;
+    int iMax = 500;
     
     ga->CreateGeneration(generationSize);
     ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP);
     
     while(true)
     {
-        if(i++ == iMax)
-            break;
-
         ga->Fitness();
         ga->writeToFile(i);
-        ga->writeImages(i,true);
-        ga->NewGeneration(ga->SelectParents(200,5,i));  
+        ga->writeImages(i,20,true);
+        ga->NewGeneration(ga->SelectParents(200,5,i),0.08);  
+        
+        if(++i == iMax)
+            break;
     }
     
     return 0;

@@ -65,9 +65,10 @@ public:
 		cv::flip(images[i].second, images[i].second,cv::RotateFlags::ROTATE_90_CLOCKWISE);
 	}
 
-	void Color(int i)
+	void ColorMap(int i, int colormap = 0)
 	{
-
+		cvtColor(images[i].second, images[i].second, cv::COLOR_RGB2GRAY);
+		cv::applyColorMap(images[i].second, images[i].second, cv::COLORMAP_JET);
 	}
 
 	void printOrder()

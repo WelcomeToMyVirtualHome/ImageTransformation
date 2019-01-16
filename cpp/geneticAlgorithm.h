@@ -67,15 +67,14 @@ public:
 	void Fitness() 
 	{
 		for(auto it = begin(generation); it != end(generation); ++it)
-       	  	it->setFitness(1./MSE(it->getImage()));
+       	  	it->setFitness(MSE(it->getImage()));
 	}
 
-	void NewGeneration(std::vector<Image> parents)
+	void NewGeneration(std::vector<Image> parents, const float pMutation = 0.05)
 	{
 		std::vector<Image> newGeneration(generationSize);
 		int nParents = parents.size();
 		uint iter = 0;
-		const float pMutation = 0.05;
 		while(true)
 		{
 			if(iter >= generationSize)
@@ -113,7 +112,7 @@ public:
 		std::vector<Image> parents(nSelect + nBest);
 		std::vector<float> n_fitness(generation.size());
 		for(uint i = 0; i < generation.size(); i++)
-			n_fitness[i] = FitnessFunc(generation[i].getFitness(),iter);
+			n_fitness[i] = FitnessFunc(1./generation[i].getFitness(),iter);
 
 		for(int i = 0; i < nSelect; ++i)
 			parents[i] = generation[WeightedRandomChoice(n_fitness)];
@@ -134,14 +133,17 @@ public:
 		fprintf(output,"%d %f %f\n",generation,avg,best.getFitness());
 	}
 
-	void writeImages(int iter, bool show = false)
+	void writeImages(int iter, int divisor = 1, bool show = false)
 	{
 		if(show)
 			best.Show(1);
-
-		char buffer[50];
-		sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
-		cv::imwrite(std::string(buffer),best.getImage());
+		
+		if(iter % divisor == 0)
+		{
+			char buffer[50];
+			sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
+			cv::imwrite(std::string(buffer),best.getImage());
+		}
 	}
 
 	const std::vector<Image> &getGeneration() const
