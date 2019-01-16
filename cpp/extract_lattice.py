@@ -8,7 +8,8 @@ from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser(description='Extract')
 parser.add_argument('--image', help='Path to input image.png', default='shapes.png')
-parser.add_argument('--output', help='Path to folder for preprocessed images', default='./input')
+parser.add_argument('--input', help='Path to folder for preprocessed images', default='./input')
+parser.add_argument('--output', help='Path to folder main programme output', default='./output')
 parser.add_argument('--params', help='Params file', default='params.txt')
 args = parser.parse_args()
 

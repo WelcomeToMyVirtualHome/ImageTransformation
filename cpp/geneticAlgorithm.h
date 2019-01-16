@@ -121,7 +121,7 @@ public:
 			std::cout << "Multiplication " << i << " channel\n";
 			for(int k = 0; k < res->nImages; k++)
 			{
-				image.ColorMap(k,2,i);
+				image.ScaleChannel(k,2,i);
 			}	
 			image.put(res->lattice, res->latticeConst);
 			image.Show(0);
