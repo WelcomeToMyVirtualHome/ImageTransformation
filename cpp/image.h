@@ -65,10 +65,19 @@ public:
 		cv::flip(images[i].second, images[i].second,cv::RotateFlags::ROTATE_90_CLOCKWISE);
 	}
 
-	void ColorMap(int i, int colormap = 0)
+	void ScaleChannel(int n, int multiplier = 1, int channel = 0)
 	{
-		cvtColor(images[i].second, images[i].second, cv::COLOR_RGB2GRAY);
-		cv::applyColorMap(images[i].second, images[i].second, cv::COLORMAP_JET);
+		for(int i = 0; i < images[n].second.rows; i++)
+		{
+			for(int j = 0; j < images[n].second.cols; j++)
+			{
+				auto pixel = images[n].second.at<cv::Vec4b>(i, j);
+				float pixelValue = (float)pixel[channel];
+				pixelValue *= multiplier;
+				pixel[channel] = uchar(pixelValue);
+				images[n].second.at<cv::Vec4b>(i, j) = pixel;
+			}
+		}
 	}
 
 	void printOrder()
@@ -117,4 +126,6 @@ private:
 	std::vector<std::pair<int,cv::Mat> > images;
 	cv::Mat image;
 	double fitness = 0;
+	uint rotation = 0;
+	cv::Vec3b scale;
 };

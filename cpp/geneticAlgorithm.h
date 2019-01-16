@@ -98,6 +98,10 @@ public:
 			if(drand48() < pMutation)
 				(this->*mutation)(child2);
 			
+			// child1.RotateClockwise(int(drand48()*res->nImages));
+			// child2.RotateClockwise(int(drand48()*res->nImages));
+
+
 			child1.put(res->lattice, res->latticeConst);
 			child2.put(res->lattice, res->latticeConst);
 			
@@ -105,6 +109,23 @@ public:
 			newGeneration[iter++] = child2;
 		}
 		generation = newGeneration;
+	}
+
+	// TEMPORARY
+	void ColorMapTest()
+	{
+		for(int i = 0; i < 3; i++)
+		{
+			auto image = Image(res->image,res->extracted);
+			image.put(res->lattice, res->latticeConst);
+			std::cout << "Multiplication " << i << " channel\n";
+			for(int k = 0; k < res->nImages; k++)
+			{
+				image.ColorMap(k,2,i);
+			}	
+			image.put(res->lattice, res->latticeConst);
+			image.Show(0);
+		}	
 	}
 
 	std::vector<Image> SelectParents(int nSelect, int nBest, int iter, bool showBest = false)
