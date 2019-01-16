@@ -76,9 +76,8 @@ public:
 
 	void Fitness() 
 	{
-		for(auto it = begin(generation); it != end(generation); ++it){
+		for(auto it = begin(generation); it != end(generation); ++it)
 			it->setFitness((this->*goalFunction)(it->getImage(), res->image));
-		}
 	}
 
 	void NewGeneration(std::vector<Image> parents, const float pMutation = 0.05)
@@ -109,12 +108,8 @@ public:
 			if(drand48() < pMutation)
 				(this->*mutation)(child2);
 			
-			// child1.RotateClockwise(int(drand48()*res->nImages));
-			// child2.RotateClockwise(int(drand48()*res->nImages));
-
-
-			child1.put(res->lattice, res->latticeConst);
-			child2.put(res->lattice, res->latticeConst);
+			child1.put(res->lattice, res->latticeConst, true);
+			child2.put(res->lattice, res->latticeConst, true);
 			
 			newGeneration[iter++] = child1;
 			newGeneration[iter++] = child2;

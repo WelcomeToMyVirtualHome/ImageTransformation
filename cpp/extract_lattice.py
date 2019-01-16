@@ -19,6 +19,12 @@ except OSError as e:
     if e.errno != errno.EEXIST:
         raise
 
+try:
+    os.makedirs(args.input)
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
+
 for img in glob.glob("{:s}//{:s}".format(args.output,"*.png")):
     os.remove(img)
 
@@ -35,7 +41,7 @@ image = cv.imread(args.image,cv.IMREAD_UNCHANGED)
 n_size = int(params[0])
 size = int(params[1])
 image = cv.resize(image,(int(n_size),int(n_size)))
-cv.imwrite("{:s}/input_resized.png".format(args.output), image)   
+cv.imwrite("{:s}/input_resized.png".format(args.input), image)   
 lattice_const = int(n_size/size)
 
 ind = 0
@@ -44,11 +50,11 @@ for i in range(size):
 	for j in range(size):
 		pos.append([i*lattice_const,j*lattice_const])
 		img = image[i*lattice_const:(i+1)*lattice_const,j*lattice_const:(j+1)*lattice_const]
-		cv.imwrite("{:s}/c_{:d}.png".format(args.output,ind), img)
+		cv.imwrite("{:s}/c_{:d}.png".format(args.input,ind), img)
 		ind += 1
 
 extracted = []
-for img in glob.glob("{:s}//{:s}".format(args.output,"c_*.png")):
+for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
     extracted.append(cv.imread(img,cv.IMREAD_UNCHANGED))
 
 img = np.zeros(image.shape,dtype=np.uint8)
