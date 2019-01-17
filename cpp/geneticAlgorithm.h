@@ -115,23 +115,6 @@ public:
 		generation = newGeneration;
 	}
 
-	// TEMPORARY
-	void ColorMapTest()
-	{
-		for(int i = 0; i < 3; i++)
-		{
-			auto image = Image(res->image,res->extracted);
-			image.put(res->lattice, res->latticeConst);
-			std::cout << "Multiplication " << i << " channel\n";
-			for(int k = 0; k < res->nImages; k++)
-			{
-				image.ScaleChannel(k,2,i);
-			}	
-			image.put(res->lattice, res->latticeConst);
-			image.Show(0);
-		}	
-	}
-
 	std::vector<Image> SelectParents(int nSelect, int nBest, int iter, bool showBest = false)
 	{	
 		std::vector<Image> parents(nSelect + nBest);
@@ -166,17 +149,6 @@ public:
 			char buffer[50];
 			sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
 			cv::imwrite(std::string(buffer),best.getImage());
-		}
-	}
-
-	void Color()
-	{
-		for(auto &image : generation)
-		{
-			for(int i = 0; i < res->nImages; i++)
-			{
-				image.ScaleChannel(i,2,1);
-			}	
 		}
 	}
 

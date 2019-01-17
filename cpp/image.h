@@ -11,7 +11,7 @@ struct Data
 {
 	int index;
 	cv::Mat img;
-	std::array<bool,3> rotation = { {0,0,0} };
+	std::array<bool,3> rotation;
 };
 
 class Image
@@ -20,7 +20,8 @@ public:
 
 	Image() 
 	{
-
+		// for(int i = 0; i < 3; i++)
+		// 	bgrShift[i] = std::array<bool,n>(); 
 	}
 	
 	Image(cv::Mat p_image) 
@@ -80,6 +81,9 @@ public:
 				if(img.rotation[i])
 					RotateClockwise(img);
 		}
+
+		for(uint i = 0; i < 3; i++)
+			ScaleChannel(bgrShift[i],i);
 	}
 
 	void RotateClockwise(Data &image)
@@ -88,24 +92,27 @@ public:
 		cv::flip(image.img, image.img,cv::RotateFlags::ROTATE_90_CLOCKWISE);
 	}
 
-	void ScaleChannel(int n, int multiplier = 1, int channel = 0)
+	void ScaleChannel(int add = 0, int channel = 0)
 	{
-		for(int i = 0; i < images[n].img.rows; i++)
+		for(uint img = 0; img < images.size(); img++)
 		{
-			for(int j = 0; j < images[n].img.cols; j++)
+			for(int i = 0; i < images[img].img.rows; i++)
 			{
-				auto pixel = images[n].img.at<cv::Vec4b>(i, j);
-				float pixelValue = (float)pixel[channel];
-				pixelValue *= multiplier;
-				pixel[channel] = uchar(pixelValue);
-				images[n].img.at<cv::Vec4b>(i, j) = pixel;
+				for(int j = 0; j < images[img].img.cols; j++)
+				{
+					auto pixel = images[img].img.at<cv::Vec4b>(i, j);
+					float pixelValue = (float)pixel[channel];
+					pixelValue += add;
+					pixel[channel] = uchar(pixelValue);
+					images[img].img.at<cv::Vec4b>(i, j) = pixel;
+				}
 			}
 		}
 	}
 	
-	void Show(int wait_ms = 0)
+	void Show(int wait_ms = 0, std::string name = "img")
 	{
-	    cv::imshow("img",image);
+	    cv::imshow(name,image);
         cv::waitKey(wait_ms);    
 	}
 
@@ -155,4 +162,5 @@ private:
 	std::vector<Data> images;
 	cv::Mat image;
 	double fitness = 0;
+	std::array<int,3> bgrShift{ {100,100,-100} };
 };
