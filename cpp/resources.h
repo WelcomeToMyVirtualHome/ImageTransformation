@@ -29,10 +29,7 @@ public:
 	        std::cout << "Image not square" << "\n";
 	        return 0;
 	    }
-	    cv::imshow("Image",image);
 	   
-	    outputPath = argv[2];
-
 	    DIR *dir;
 	    struct dirent *ent;
 	    printf("Reading from %s\n", argv[1]);
@@ -69,6 +66,7 @@ public:
 	        paramsStream.close();
 	    }
 
+	    outputPath = argv[2];
 	    imageSize = params[0];
 	    latticeN = params[1];
 	    latticeConst = std::floor(float(imageSize)/latticeN);

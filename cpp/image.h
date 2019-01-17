@@ -7,9 +7,17 @@
 #include <numeric>
 #include <random>
 
+struct Data
+{
+	int index;
+	cv::Mat img;
+	std::array<bool,3> rotation = { {0,0,0} };
+};
+
 class Image
 {
 public:
+
 	Image() 
 	{
 
@@ -25,10 +33,14 @@ public:
 		image = p_image.clone();
 		images = img.images;
 	}
-	
-	void add(int index, cv::Mat& img)
+		
+	void add(int index, cv::Mat img)
 	{
-		images.push_back(std::pair<int,cv::Mat>(index,img)); 
+		Data data;
+		data.index = index;
+		data.img = img;
+		data.rotation = { {0,0,0} };
+		images.push_back(data); 
 	}
 
 	void shuffle(bool all = true, int begin = 0, int end = 0) 
@@ -41,46 +53,52 @@ public:
 		if(lattice.size() != images.size())
 			printf("Wrong sizes\n");
 
-		std::vector<std::pair<int,cv::Mat> > copy(images.size());
+		std::vector<Data> copy(images.size());
 		for(uint i = 0; i < images.size(); i++)
-			copy[i] = std::pair<int,cv::Mat>(images[i].first,images[i].second.clone());
+		{
+			Data data;
+			data.index = images[i].index;
+			data.img = images[i].img.clone();
+			data.rotation = images[i].rotation;
+			copy[i] = data;
+		}
 		
 		if(modify)
 			Modify(copy);
 
 		for(uint i = 0; i < images.size(); i++)
-	        if(image.type() == copy[i].second.type() && copy[i].second.rows <= image.rows and copy[i].second.cols <= image.cols)
-	            copy[i].second.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
+	        if(image.type() == copy[i].img.type() && copy[i].img.rows <= image.rows and copy[i].img.cols <= image.cols)
+	            copy[i].img.copyTo(image(cv::Rect(lattice[i].first, lattice[i].second,lattice_const,lattice_const)));   
 	}
 
 
-	void Modify(std::vector<std::pair<int,cv::Mat> > &images)
+	void Modify(std::vector<Data> &images)
 	{
 		for(auto &img : images)
 		{
-			for(uint i = 0; i < rotation.size(); i++)
-				if(rotation[i])
+			for(uint i = 0; i < img.rotation.size(); i++)
+				if(img.rotation[i])
 					RotateClockwise(img);
 		}
 	}
 
-	void RotateClockwise(std::pair<int,cv::Mat> &image)
+	void RotateClockwise(Data &image)
 	{
-		cv::transpose(image.second, image.second);	
-		cv::flip(image.second, image.second,cv::RotateFlags::ROTATE_90_CLOCKWISE);
+		cv::transpose(image.img, image.img);	
+		cv::flip(image.img, image.img,cv::RotateFlags::ROTATE_90_CLOCKWISE);
 	}
 
 	void ScaleChannel(int n, int multiplier = 1, int channel = 0)
 	{
-		for(int i = 0; i < images[n].second.rows; i++)
+		for(int i = 0; i < images[n].img.rows; i++)
 		{
-			for(int j = 0; j < images[n].second.cols; j++)
+			for(int j = 0; j < images[n].img.cols; j++)
 			{
-				auto pixel = images[n].second.at<cv::Vec4b>(i, j);
+				auto pixel = images[n].img.at<cv::Vec4b>(i, j);
 				float pixelValue = (float)pixel[channel];
 				pixelValue *= multiplier;
 				pixel[channel] = uchar(pixelValue);
-				images[n].second.at<cv::Vec4b>(i, j) = pixel;
+				images[n].img.at<cv::Vec4b>(i, j) = pixel;
 			}
 		}
 	}
@@ -94,7 +112,7 @@ public:
 	void printOrder()
 	{
 		for(auto img : images)
-			printf("i=%d\n",img.first);
+			printf("i=%d\n",img.index);
 		printf("\n");
 	}
 
@@ -113,29 +131,28 @@ public:
 		return fitness;
 	}
 
-	void setImage(int i, std::pair<int,cv::Mat> image)
+	void setImage(int i, Data image)
 	{
 		images[i] = image;
 	}
 
-	void setImages(std::vector<std::pair<int,cv::Mat> > n_images)
+	void setImages(std::vector<Data> n_images)
 	{
 		images = n_images;
 	}
 
-	std::vector<std::pair<int,cv::Mat> > const &getImages() const
+	std::vector<Data> const &getImages() const
 	{ 
 		return images; 
 	}
 
-	std::vector<std::pair<int,cv::Mat> > &getImages()
+	std::vector<Data> &getImages()
 	{ 
 		return images; 
 	}
 
 private:
-	std::vector<std::pair<int,cv::Mat> > images;
+	std::vector<Data> images;
 	cv::Mat image;
 	double fitness = 0;
-	std::array<bool,3> rotation = { {0,0,0} };
 };

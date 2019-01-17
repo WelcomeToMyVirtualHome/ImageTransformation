@@ -169,6 +169,17 @@ public:
 		}
 	}
 
+	void Color()
+	{
+		for(auto &image : generation)
+		{
+			for(int i = 0; i < res->nImages; i++)
+			{
+				image.ScaleChannel(i,2,1);
+			}	
+		}
+	}
+
 	void Flush()
 	{
 		fclose(output);
@@ -301,13 +312,13 @@ private:
 		while(crosspoint1 == crosspoint2)
 			crosspoint2 = int(drand48()*nImages);
 
-		std::vector<std::pair<int,cv::Mat> > images(nImages);
+		std::vector<Data> images(nImages);
 		int min = std::min(crosspoint1,crosspoint2);
 		int max = std::max(crosspoint1,crosspoint2);
-		std::vector<std::pair<int,cv::Mat> > parent1Images = parent1.getImages();
-		std::vector<std::pair<int,cv::Mat> > parent2Images = parent2.getImages();
+		auto parent1Images = parent1.getImages();
+		auto parent2Images = parent2.getImages();
 
-		std::vector<std::pair<int,cv::Mat> > fromParent1(max-min+1);
+		std::vector<Data> fromParent1(max-min+1);
 		for(int i = 0; i < max - min + 1; i++)
 		{
 			images[i+min] = parent1Images[i];
@@ -334,8 +345,8 @@ private:
 		std::vector<int> p2(nImages);
 		for(int i = 0; i < nImages; i++)
 		{
-			p1[i] = parent1.getImages()[i].first;
-			p2[i] = parent2.getImages()[i].first;
+			p1[i] = parent1.getImages()[i].index;
+			p2[i] = parent2.getImages()[i].index;
 		}
 		
 		const auto find = [&](const auto &self, const auto &p1, const auto &p2, int current, int startIndex, auto &fromP2) -> void
@@ -374,7 +385,7 @@ private:
 		while(index1 == index2)
 			index2 = int(drand48()*nImages);
 
-		std::vector<std::pair<int,cv::Mat> > images = child.getImages();
+		auto images = child.getImages();
 		auto var = images[index1];
 		images[index1] = images[index2];
 		images[index2] = var;
@@ -409,16 +420,16 @@ private:
 		child.shuffle(false,min,max);
 	}
 
-	void SortImages(std::vector<std::pair<int,cv::Mat> > &toSort) 
+	void SortImages(std::vector<Data> &toSort) 
 	{
-		sort(std::begin(toSort), std::end(toSort),[&](const auto &lhs, const auto &rhs) {return lhs.first < rhs.first;} );
+		sort(std::begin(toSort), std::end(toSort),[&](const auto &lhs, const auto &rhs) {return lhs.index < rhs.index;} );
 	}
 
-	void RemoveDuplicates(std::vector<std::pair<int,cv::Mat> > &images, const std::vector<std::pair<int,cv::Mat> > &toRemove)
+	void RemoveDuplicates(std::vector<Data> &images, const std::vector<Data> &toRemove)
 	{
 		for(auto r : toRemove)
 			for (auto it = images.begin(); it != images.end(); )
-				if(r.first == it->first)
+				if(r.index == it->index)
 					images.erase(it);
 				else 
 					++it;

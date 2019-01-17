@@ -31,24 +31,27 @@ int main(int argc, char** argv)
     Resources *res = new Resources(argc,argv);    
     GeneticAlgorithm *ga = new GeneticAlgorithm(res);
 
+    cv::imshow("ref",res->image);
+       
     int generationSize = 1000;
     int i = 0;
-    int iMax = 500;
+    int iMax = 5000;
     
     ga->CreateGeneration(generationSize);
     ga->SetOperators(GeneticAlgorithm::CrossoverFlags::CYCLE, GeneticAlgorithm::MutationFlags::SINGLE_SWAP, GeneticAlgorithm::GoalFunctionFlags::MSSIM);
-    
+  
     while(true)
     {
         ga->Fitness();
         ga->writeToFile(i);
         ga->writeImages(i,20,true);
-        ga->NewGeneration(ga->SelectParents(200,5,i),0.08);  
+        ga->NewGeneration(ga->SelectParents(300,5,i),0.08);  
 
         if(flag)
         {
             printf("\nSignal caught!\nFlushing data\n");
             ga->Flush();
+            cv::destroyAllWindows();
             return 0;
         }     
 

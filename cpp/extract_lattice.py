@@ -7,7 +7,8 @@ import glob
 from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser(description='Extract')
-parser.add_argument('--image', help='Path to input image.png', default='shapes.png')
+parser.add_argument('--image', help='Path to input image.png', default='picasso1.png')
+parser.add_argument('--ref', help='Path to reference image.png', default='picasso1.png')
 parser.add_argument('--input', help='Path to folder for preprocessed images', default='./input')
 parser.add_argument('--output', help='Path to folder main programme output', default='./output')
 parser.add_argument('--params', help='Params file', default='params.txt')
@@ -28,20 +29,28 @@ except OSError as e:
 for img in glob.glob("{:s}//{:s}".format(args.output,"*.png")):
     os.remove(img)
 
-src = cv.imread(args.image)
-if src is None:
-    print('Could not open or find the image:', args.image)
-    exit(0)
+for img in glob.glob("{:s}//{:s}".format(args.input,"*.png")):
+    os.remove(img)
 
 with open(args.params) as fp:
 	params = fp.readlines()
 
 image = cv.imread(args.image,cv.IMREAD_UNCHANGED)
+if image is None:
+    print('Could not open or find the image:', args.image)
+    exit(0)
+
+ref = cv.imread(args.ref,cv.IMREAD_UNCHANGED)
+if ref is None:
+    print('Could not open or find the image:', args.ref)
+    exit(0)
 
 n_size = int(params[0])
 size = int(params[1])
 image = cv.resize(image,(int(n_size),int(n_size)))
-cv.imwrite("{:s}/input_resized.png".format(args.input), image)   
+ref = cv.resize(ref,(int(n_size),int(n_size)))
+cv.imwrite("{:s}/input_resized.png".format(args.input), ref)   
+   
 lattice_const = int(n_size/size)
 
 ind = 0
@@ -56,13 +65,3 @@ for i in range(size):
 extracted = []
 for img in glob.glob("{:s}//{:s}".format(args.input,"c_*.png")):
     extracted.append(cv.imread(img,cv.IMREAD_UNCHANGED))
-
-img = np.zeros(image.shape,dtype=np.uint8)
-for extra in extracted:
-	i_pos = np.random.randint(low=0,high=len(pos))
-	n_pos = pos[i_pos]
-	img[n_pos[0]:n_pos[0]+lattice_const,n_pos[1]:n_pos[1]+lattice_const] = extra
-	del pos[i_pos]
-
-cv.imshow("img",img)
-cv.waitKey(0)
