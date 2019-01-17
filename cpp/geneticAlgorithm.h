@@ -1,6 +1,4 @@
 #pragma once
-#include <thread>
-#include <chrono>
 #include <cstdio>
 
 #include "image.h"
@@ -31,7 +29,7 @@ public:
 		this->res = res;
 		char buffer[50];
 		sprintf(buffer,"%s/fitnessHistory.dat",res->outputPath);
-		output = fopen(buffer,"w");
+		output = fopen(buffer,"w+");
 		srand48(time(NULL));
 	} 
 
@@ -150,7 +148,7 @@ public:
 
 		return parents;
 	}
-
+	
 	void writeToFile(int generation)
 	{
 		float avg = AverageFitness();
@@ -169,6 +167,11 @@ public:
 			sprintf(buffer,"%s/best%d.png",res->outputPath,iter);
 			cv::imwrite(std::string(buffer),best.getImage());
 		}
+	}
+
+	void Flush()
+	{
+		fclose(output);
 	}
 
 	const std::vector<Image> &getGeneration() const
@@ -190,8 +193,8 @@ private:
 	float (GeneticAlgorithm::*goalFunction)(const cv::Mat&, const cv::Mat&);
 	FILE *output;
 	Image best;
-
-	float getMSSIM( const cv::Mat& i1, const cv::Mat& i2)
+	
+	float getMSSIM(const cv::Mat& i1, const cv::Mat& i2)
 	{
 		 const double C1 = 6.5025, C2 = 58.5225;
 		 /***************************** INITS **********************************/
@@ -240,8 +243,8 @@ private:
 		 cv::Mat ssim_map;
 		 cv::divide(t3, t1, ssim_map);      // ssim_map =  t3./t1;
 
-		 cv::Scalar mssim = cv::mean( ssim_map ); // mssim = average of ssim map
-		 return mssim[0]+mssim[1]+mssim[2]+mssim[3];
+		 cv::Scalar mssim = cv::mean(ssim_map); // mssim = average of ssim map
+		 return float(mssim[0]+mssim[1]+mssim[2]+mssim[3])/4;
 	}
 	
 	float getMSE(const cv::Mat &imageToCompare, const cv::Mat &image)
