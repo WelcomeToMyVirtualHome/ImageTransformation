@@ -11,7 +11,6 @@ struct Data
 {
 	int index;
 	cv::Mat img;
-	std::array<bool,3> rotation;
 };
 
 class Image
@@ -20,8 +19,7 @@ public:
 
 	Image() 
 	{
-		// for(int i = 0; i < 3; i++)
-		// 	bgrShift[i] = std::array<bool,n>(); 
+
 	}
 	
 	Image(cv::Mat p_image) 
@@ -33,6 +31,16 @@ public:
 	{ 
 		image = p_image.clone();
 		images = img.images;
+		rotation.resize(images.size()*3);
+		for(uint i = 0; i < rotation.size(); i++)
+			drand48() > 0.5 ? rotation[i] = true : rotation[i] = false;
+	}
+
+	Image(const Image &img)
+	{
+		image = img.image.clone();
+		images = img.images;
+		rotation = img.rotation;
 	}
 		
 	void add(int index, cv::Mat img)
@@ -40,7 +48,6 @@ public:
 		Data data;
 		data.index = index;
 		data.img = img;
-		data.rotation = { {0,0,0} };
 		images.push_back(data); 
 	}
 
@@ -49,7 +56,7 @@ public:
 		all ? std::random_shuffle(images.begin(), images.end()) : std::random_shuffle(images.begin() + begin, images.begin() + end);
 	}
 	
-	void put(const std::vector<std::pair<int,int> > &lattice, int lattice_const, bool modify = false)
+	void put(const std::vector<std::pair<int,int> > &lattice, int lattice_const, bool modify = true)
 	{
 		if(lattice.size() != images.size())
 			printf("Wrong sizes\n");
@@ -60,7 +67,6 @@ public:
 			Data data;
 			data.index = images[i].index;
 			data.img = images[i].img.clone();
-			data.rotation = images[i].rotation;
 			copy[i] = data;
 		}
 		
@@ -75,11 +81,11 @@ public:
 
 	void Modify(std::vector<Data> &images)
 	{
-		for(auto &img : images)
+		for(uint i = 0; i < images.size(); i++)
 		{
-			for(uint i = 0; i < img.rotation.size(); i++)
-				if(img.rotation[i])
-					RotateClockwise(img);
+			for(uint k = 0; k < 3; k++)
+				if(rotation[i*3 + k])
+					RotateClockwise(images[i]);
 		}
 
 		for(uint i = 0; i < 3; i++)
@@ -158,9 +164,20 @@ public:
 		return images; 
 	}
 
+	int &getBgrShift(int i)
+	{
+		return bgrShift[i];
+	} 
+
+	std::vector<bool> &getRotation()
+	{
+		return rotation;
+	}
+
 private:
 	std::vector<Data> images;
+	std::vector<bool> rotation;
+	std::array<int,3> bgrShift{ {0,0,0} };
 	cv::Mat image;
 	double fitness = 0;
-	std::array<int,3> bgrShift{ {100,100,-100} };
 };

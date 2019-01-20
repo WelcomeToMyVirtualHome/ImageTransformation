@@ -67,12 +67,24 @@ public:
 			mutation = &GeneticAlgorithm::ScrambleMutation;
 
 		if(goalFunctionFlag == GoalFunctionFlags::MSE)
+		{
 			goalFunction = &GeneticAlgorithm::getMSE;
+			inverseFitness = true;
+		}
 		else if(goalFunctionFlag == GoalFunctionFlags::MSSIM)
+		{
 			goalFunction = &GeneticAlgorithm::getMSSIM;
+			inverseFitness = false;
+		}
 	}
 
 	void Fitness() 
+	{
+		for(auto it = begin(this->generation); it != end(this->generation); ++it)
+			it->setFitness((this->*goalFunction)(it->getImage(), res->image));
+	}
+
+	void Fitness(std::vector<Image> &generation) 
 	{
 		for(auto it = begin(generation); it != end(generation); ++it)
 			it->setFitness((this->*goalFunction)(it->getImage(), res->image));
@@ -95,9 +107,9 @@ public:
 
 			Image parent1 = parents[parent1Index];
 			Image parent2 = parents[parent2Index];
-			
-			Image child1(res->image,res->extracted);
-			Image child2(res->image,res->extracted);
+
+			Image child1(parent1);
+			Image child2(parent2);
 
 			(this->*crossover)(child1,child2,parent1,parent2);
 
@@ -105,9 +117,9 @@ public:
 				(this->*mutation)(child1);
 			if(drand48() < pMutation)
 				(this->*mutation)(child2);
-			
-			child1.put(res->lattice, res->latticeConst, true);
-			child2.put(res->lattice, res->latticeConst, true);
+
+			child1.put(res->lattice, res->latticeConst, false);
+			child2.put(res->lattice, res->latticeConst, false);
 			
 			newGeneration[iter++] = child1;
 			newGeneration[iter++] = child2;
@@ -120,7 +132,7 @@ public:
 		std::vector<Image> parents(nSelect + nBest);
 		std::vector<float> n_fitness(generation.size());
 		for(uint i = 0; i < generation.size(); i++)
-			n_fitness[i] = FitnessFunc(generation[i].getFitness(),iter);
+			n_fitness[i] = FitnessFunc(inverseFitness ? 1./generation[i].getFitness() : generation[i].getFitness(),iter);
 		for(int i = 0; i < nSelect; ++i)
 			parents[i] = generation[WeightedRandomChoice(n_fitness)];
 
@@ -131,7 +143,57 @@ public:
 
 		return parents;
 	}
-	
+
+	void MutationRotation()
+	{
+		std::vector<Image> newGeneration(generationSize);
+		for(uint i = 0; i < generationSize; i++)
+		{
+			Image newImage(generation[i]);
+			for(uint j = 0; j < newImage.getRotation().size(); j++)
+				if(drand48() < pMutationRotation)
+					newImage.getRotation()[j] = !newImage.getRotation()[j];
+			newGeneration[i] = newImage;
+			newGeneration[i].put(res->lattice, res->latticeConst);
+		}
+		Fitness(newGeneration);
+		int nBetter = 0;
+		for(uint i = 0; i < generationSize; i++)
+		{
+			if(newGeneration[i].getFitness() > generation[i].getFitness())
+			{
+				generation[i] = newGeneration[i];
+				nBetter++;
+			}
+		}
+		float(nBetter)/generationSize < 1/5 ? pMutationRotation /= mutationMultiplier : pMutationRotation *= mutationMultiplier;
+	}
+
+	void MutationColor()
+	{
+		std::vector<Image> newGeneration(generationSize);
+		std::random_device rd{};
+		std::mt19937 gen{rd()};
+		std::normal_distribution<> d{0,stddev};
+		for(uint i = 0; i < generationSize; i++)
+		{
+			newGeneration[i] = Image(generation[i]);
+			for(int i = 0; i < 3; i++)
+				newGeneration[i].getBgrShift(i) += int(d(gen));
+			newGeneration[i].put(res->lattice, res->latticeConst);
+			generation[i] = newGeneration[i];
+		}
+		Fitness(newGeneration);
+		int nBetter = 0;
+		for(uint i = 0; i < generationSize; i++)
+			if(inverseFitness ? 1./newGeneration[i].getFitness() : newGeneration[i].getFitness() > inverseFitness ? 1./generation[i].getFitness() : generation[i].getFitness())
+			{
+				generation[i] = newGeneration[i];
+				nBetter++;
+			}
+		float(nBetter)/generationSize < 1./5 ? stddev *= mutationMultiplier : stddev /= mutationMultiplier; 
+	}
+
 	void writeToFile(int generation)
 	{
 		float avg = AverageFitness();
@@ -176,58 +238,68 @@ private:
 	float (GeneticAlgorithm::*goalFunction)(const cv::Mat&, const cv::Mat&);
 	FILE *output;
 	Image best;
-	
+	bool inverseFitness;
+	double stddev = 5.;
+	double mutationMultiplier = 1.22;
+	float pMutationRotation = 0.05;
+
 	float getMSSIM(const cv::Mat& i1, const cv::Mat& i2)
 	{
-		 const double C1 = 6.5025, C2 = 58.5225;
-		 /***************************** INITS **********************************/
-		 int d= CV_32F;
+		const double C1 = 6.5025, C2 = 58.5225;
+		int d = CV_32F;
 
-		 cv::Mat I1, I2;
-		 i1.convertTo(I1, d);           // cannot calculate on one byte large values
-		 i2.convertTo(I2, d);
+		float result = 0;
+		for(int i = 0; i < res->latticeN; i++)
+		{
+			for(int j = 0; j < res->latticeN; j++)
+			{
+				auto m1 = i1(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst));
+				auto m2 = i2(cv::Rect(i*res->latticeConst, j*res->latticeConst, res->latticeConst, res->latticeConst));
 
-		 cv::Mat I2_2   = I2.mul(I2);        // I2^2
-		 cv::Mat I1_2   = I1.mul(I1);        // I1^2
-		 cv::Mat I1_I2  = I1.mul(I2);        // I1 * I2
+				cv::Mat I1, I2;
+				m1.convertTo(I1, d);
+				m2.convertTo(I2, d);
 
-		 /***********************PRELIMINARY COMPUTING ******************************/
+				cv::Mat I2_2   = I2.mul(I2);
+				cv::Mat I1_2   = I1.mul(I1);
+				cv::Mat I1_I2  = I1.mul(I2);
+				cv::Mat mu1, mu2;   //
+				cv::GaussianBlur(I1, mu1, cv::Size(11, 11), 1.5);
+				cv::GaussianBlur(I2, mu2, cv::Size(11, 11), 1.5);
 
-		 cv::Mat mu1, mu2;   //
-		 cv::GaussianBlur(I1, mu1, cv::Size(11, 11), 1.5);
-		 cv::GaussianBlur(I2, mu2, cv::Size(11, 11), 1.5);
+				cv::Mat mu1_2   =   mu1.mul(mu1);
+				cv::Mat mu2_2   =   mu2.mul(mu2);
+				cv::Mat mu1_mu2 =   mu1.mul(mu2);
 
-		 cv::Mat mu1_2   =   mu1.mul(mu1);
-		 cv::Mat mu2_2   =   mu2.mul(mu2);
-		 cv::Mat mu1_mu2 =   mu1.mul(mu2);
+				cv::Mat sigma1_2, sigma2_2, sigma12;
 
-		 cv::Mat sigma1_2, sigma2_2, sigma12;
+				GaussianBlur(I1_2, sigma1_2, cv::Size(11, 11), 1.5);
+				sigma1_2 -= mu1_2;
 
-		 GaussianBlur(I1_2, sigma1_2, cv::Size(11, 11), 1.5);
-		 sigma1_2 -= mu1_2;
+				GaussianBlur(I2_2, sigma2_2, cv::Size(11, 11), 1.5);
+				sigma2_2 -= mu2_2;
 
-		 GaussianBlur(I2_2, sigma2_2, cv::Size(11, 11), 1.5);
-		 sigma2_2 -= mu2_2;
+				GaussianBlur(I1_I2, sigma12, cv::Size(11, 11), 1.5);
+				sigma12 -= mu1_mu2;
 
-		 GaussianBlur(I1_I2, sigma12, cv::Size(11, 11), 1.5);
-		 sigma12 -= mu1_mu2;
+				cv::Mat t1, t2, t3;
 
-		 ///////////////////////////////// FORMULA ////////////////////////////////
-		 cv::Mat t1, t2, t3;
+				t1 = 2 * mu1_mu2 + C1;
+				t2 = 2 * sigma12 + C2;
+				t3 = t1.mul(t2);              // t3 = ((2*mu1_mu2 + C1).*(2*sigma12 + C2))
 
-		 t1 = 2 * mu1_mu2 + C1;
-		 t2 = 2 * sigma12 + C2;
-		 t3 = t1.mul(t2);              // t3 = ((2*mu1_mu2 + C1).*(2*sigma12 + C2))
+				t1 = mu1_2 + mu2_2 + C1;
+				t2 = sigma1_2 + sigma2_2 + C2;
+				t1 = t1.mul(t2);               // t1 =((mu1_2 + mu2_2 + C1).*(sigma1_2 + sigma2_2 + C2))
 
-		 t1 = mu1_2 + mu2_2 + C1;
-		 t2 = sigma1_2 + sigma2_2 + C2;
-		 t1 = t1.mul(t2);               // t1 =((mu1_2 + mu2_2 + C1).*(sigma1_2 + sigma2_2 + C2))
+				cv::Mat ssim_map;
+				cv::divide(t3, t1, ssim_map);      // ssim_map =  t3./t1;
 
-		 cv::Mat ssim_map;
-		 cv::divide(t3, t1, ssim_map);      // ssim_map =  t3./t1;
-
-		 cv::Scalar mssim = cv::mean(ssim_map); // mssim = average of ssim map
-		 return float(mssim[0]+mssim[1]+mssim[2]+mssim[3])/4;
+				cv::Scalar mssim = cv::mean(ssim_map); // mssim = average of ssim map
+				result += float(mssim[0]+mssim[1]+mssim[2]+mssim[3])/4;
+			}
+		}
+		return result/res->latticeN/res->latticeN;
 	}
 	
 	float getMSE(const cv::Mat &imageToCompare, const cv::Mat &image)
@@ -247,24 +319,22 @@ private:
 
 	float FitnessFunc(float score, int i)
 	{
-		return score/100 + i * 0.002;
+		// return score/100 + i * 0.002;
+		return score;
 	}
 
 	float AverageFitness()
 	{
 		float sum = 0;
-		for(auto img : generation)
-			sum += img.getFitness();
+		for(auto it = begin(generation); it != end(generation); ++it)
+			sum += it->getFitness();
 		return sum/generationSize;
 	}
 	
 	int WeightedRandomChoice(std::vector<float> n_fitness)
 	{
 		float max = std::accumulate(n_fitness.begin(), n_fitness.end(), 0.0f);
-		std::random_device rd;     // only used once to initialise (seed) engine
-		std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-		std::uniform_real_distribution<float> uni(0,max); // guaranteed unbiased
-		float pick = uni(rng);
+		float pick = drand48()*max;
 		float current = 0;
 		for (uint i = 0; i < n_fitness.size(); ++i)
 		{

@@ -45,7 +45,9 @@ int main(int argc, char** argv)
         ga->Fitness();
         ga->writeToFile(i);
         ga->writeImages(i,20,true);
-        ga->NewGeneration(ga->SelectParents(300,5,i),0.08);  
+        ga->NewGeneration(ga->SelectParents(200,300,i),0.08); 
+        // ga->MutationRotation(); 
+        // ga->MutationColor();
 
         if(flag)
         {
